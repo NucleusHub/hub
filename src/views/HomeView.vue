@@ -1,7 +1,11 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
 import { APP_NAME, NAV_ITEMS } from '@/config.js'
 import logoUrl from '@/assets/nucleus-logo-transparent.png'
+import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
+
+const cardRefs = NAV_ITEMS.map(() => shallowRef(null))
+const cardHovered = ref(NAV_ITEMS.map(() => false))
 
 const THEMES = [
   { key: 'light',  label: 'Light',  icon: 'M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z' },
@@ -36,52 +40,109 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 dark:bg-slate-900 flex flex-col items-center justify-center p-4 sm:p-8 gap-8 sm:gap-16">
+  <div class="relative min-h-screen bg-slate-100 dark:bg-[#0d0d1a] flex flex-col items-center justify-center p-4 sm:p-8 gap-8 sm:gap-12 overflow-hidden">
 
-    <!-- Theme toggle — top right -->
-    <div class="fixed top-4 right-4 flex bg-slate-200 dark:bg-slate-800 rounded-lg p-0.5 gap-0.5">
-      <button
-        v-for="t in THEMES"
-        :key="t.key"
-        @click="theme = t.key"
-        :title="t.label"
-        :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-md transition-colors',
-          theme === t.key
-            ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-            : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-white']"
+    <!-- Colorful background blobs — give the glass something to refract -->
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-violet-400/35 dark:bg-violet-700/50 blur-[120px]" />
+      <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-400/35 dark:bg-indigo-700/50 blur-[120px]" />
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-blue-400/25 dark:bg-blue-600/35 blur-[80px]" />
+      <div class="absolute top-1/4 right-1/4 w-56 h-56 rounded-full bg-pink-400/20 dark:bg-purple-700/30 blur-[80px]" />
+    </div>
+
+    <!-- Theme toggle — top right (LiquidGlass pill) -->
+    <div class="fixed top-4 right-4 z-50" style="width: 114px; height: 46px;">
+      <LiquidGlass
+        :style="{ position: 'absolute', top: '50%', left: '50%' }"
+        :corner-radius="14"
+        padding="5px"
+        :displacement-scale="55"
+        :blur-amount="0.1"
+        :saturation="160"
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" />
-        </svg>
-      </button>
+        <div class="flex gap-0.5">
+          <button
+            v-for="t in THEMES"
+            :key="t.key"
+            @click="theme = t.key"
+            :title="t.label"
+            :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-all',
+              theme === t.key
+                ? 'bg-white/40 text-slate-800 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" />
+            </svg>
+          </button>
+        </div>
+      </LiquidGlass>
     </div>
 
-    <div class="flex flex-col items-center gap-3 text-center">
-      <img :src="logoUrl" alt="Nucleus" class="w-20 h-20 sm:w-28 sm:h-28 object-contain" />
-      <h1 class="text-4xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
+    <!-- Logo + title -->
+    <div class="relative flex flex-col items-center gap-4 text-center z-10">
+      <img :src="logoUrl" alt="Nucleus" class="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+      <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>
 
-    <div class="flex flex-col gap-3 w-full max-w-xs sm:max-w-sm">
+    <!-- Nav cards — LiquidGlass -->
+    <div class="relative z-10 flex flex-col gap-4 items-center w-full">
       <a
-        v-for="item in NAV_ITEMS"
+        v-for="(item, i) in NAV_ITEMS"
         :key="item.to"
+        :ref="el => { if (el) cardRefs[i].value = el }"
         :href="item.to"
-        class="group flex items-center justify-between bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-500 rounded-2xl px-5 sm:px-6 py-4 transition-all"
+        @mouseenter="cardHovered[i] = true"
+        @mouseleave="cardHovered[i] = false"
+        class="relative block cursor-pointer"
+        :style="{
+          height: '80px',
+          width: 'min(340px, 90vw)',
+          transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+          transform: cardHovered[i] ? 'translateY(-5px)' : 'translateY(0)',
+          boxShadow: cardHovered[i] ? '0 16px 48px rgba(99,102,241,0.55)' : '0 0 0 rgba(0,0,0,0)',
+          borderRadius: '20px',
+        }"
       >
-        <div class="flex items-center gap-4">
-          <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+        <LiquidGlass
+          :style="{ position: 'absolute', top: '50%', left: '50%' }"
+          :corner-radius="20"
+          padding="16px 20px"
+          :displacement-scale="70"
+          :blur-amount="0.12"
+          :saturation="160"
+          :aberration-intensity="3"
+          :elasticity="0.4"
+          :mouse-container="cardRefs[i]"
+          class="cursor-pointer"
+          @click="() => {}"
+        >
+          <div style="min-width: min(300px, 80vw);" class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div
+                class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                :style="{ background: cardHovered[i] ? 'rgb(99,102,241)' : 'rgba(99,102,241,0.75)', transition: 'background 0.25s ease' }"
+              >
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-semibold text-slate-900 dark:text-white leading-tight">{{ item.label }}</p>
+                <p class="text-xs text-slate-500 dark:text-white/60 mt-0.5">{{ item.description }}</p>
+              </div>
+            </div>
+            <svg
+              class="w-4 h-4 shrink-0"
+              :style="{ color: cardHovered[i] ? 'rgba(99,102,241,0.8)' : '', transition: 'color 0.25s ease' }"
+              :class="cardHovered[i] ? '' : 'text-slate-400 dark:text-white/40'"
+              fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </div>
-          <div>
-            <p class="text-slate-900 dark:text-white font-medium">{{ item.label }}</p>
-            <p class="text-slate-400 dark:text-slate-500 text-sm">{{ item.description }}</p>
-          </div>
-        </div>
-        <svg class="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
+        </LiquidGlass>
       </a>
     </div>
   </div>
