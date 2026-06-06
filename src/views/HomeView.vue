@@ -1,7 +1,8 @@
 <script setup>
 import { ref, shallowRef, watch, computed, reactive } from 'vue'
 import { APP_NAME } from '@/config.js'
-import logoUrl from '@/assets/nucleus-logo-transparent.png'
+import logoDark from '@/assets/nucleus-logo-transparent.png'
+import logoLight from '@/assets/nucleus-logo-light-1.png'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
 import { useRegistry } from '@/composables/useRegistry.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
@@ -40,10 +41,13 @@ function setCookie(name, value) {
 }
 
 const theme = ref(getCookie(THEME_KEY) || 'system')
+const isDark = ref(false)
+const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
 
 function applyTheme(t) {
   const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', dark)
+  isDark.value = dark
 }
 
 watch(theme, (val) => {
