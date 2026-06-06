@@ -1,7 +1,8 @@
 <script setup>
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { APP_NAME } from '@/config.js'
-import logoUrl from '@/assets/nucleus-logo-transparent.png'
+import logoDark from '@/assets/nucleus-logo-transparent.png'
+import logoLight from '@/assets/nucleus-logo-light-1.png'
 import { useRegistry } from '@/composables/useRegistry.js'
 
 const { apps } = useRegistry()
@@ -43,10 +44,13 @@ function setCookie(name, value) {
 }
 
 const theme = ref(getCookie(THEME_KEY) || 'system')
+const isDark = ref(false)
+const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
 
 function applyTheme(t) {
   const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', dark)
+  isDark.value = dark
 }
 
 watch(theme, (val) => {
