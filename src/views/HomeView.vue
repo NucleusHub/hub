@@ -1,11 +1,13 @@
 <script setup>
-import { ref, shallowRef, watch, computed, reactive } from 'vue'
+import { shallowRef, watch, computed, reactive } from 'vue'
 import { APP_NAME } from '@/config.js'
 import logoDark from '@/assets/nucleus-logo-transparent.png'
 import logoLight from '@/assets/nucleus-logo-light-1.png'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
-import { useRegistry } from '@/composables/useRegistry.js'
+import { useRegistry } from '@core/useRegistry.js'
+import { useTheme } from '@core/useTheme.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
+import BackgroundBlobs from '@core/BackgroundBlobs.vue'
 
 const { apps, widgets, loading } = useRegistry()
 
@@ -30,45 +32,14 @@ const THEMES = [
   { key: 'dark',   label: 'Dark',   icon: 'M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998z' },
 ]
 
-const THEME_KEY = 'nucleus-theme'
-
-function getCookie(name) {
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'))
-  return m ? decodeURIComponent(m[1]) : null
-}
-function setCookie(name, value) {
-  document.cookie = name + '=' + encodeURIComponent(value) + '; path=/; max-age=31536000; SameSite=Lax'
-}
-
-const theme = ref(getCookie(THEME_KEY) || 'system')
-const isDark = ref(false)
+const { theme, isDark, setTheme } = useTheme()
 const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
-
-function applyTheme(t) {
-  const dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.documentElement.classList.toggle('dark', dark)
-  isDark.value = dark
-}
-
-watch(theme, (val) => {
-  setCookie(THEME_KEY, val)
-  applyTheme(val)
-}, { immediate: true })
-
-const sysMq = window.matchMedia('(prefers-color-scheme: dark)')
-sysMq.addEventListener('change', () => { if (theme.value === 'system') applyTheme('system') })
 </script>
 
 <template>
   <div class="relative min-h-screen bg-slate-100 dark:bg-[#0d0d1a] flex flex-col items-center justify-center p-4 sm:p-8 gap-8 sm:gap-12 overflow-hidden">
 
-    <!-- Colorful background blobs -->
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
-      <div class="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-violet-400/35 dark:bg-violet-700/50 blur-[120px]" />
-      <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-400/35 dark:bg-indigo-700/50 blur-[120px]" />
-      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-blue-400/25 dark:bg-blue-600/35 blur-[80px]" />
-      <div class="absolute top-1/4 right-1/4 w-56 h-56 rounded-full bg-pink-400/20 dark:bg-purple-700/30 blur-[80px]" />
-    </div>
+    <BackgroundBlobs />
 
     <!-- Widgets — bottom right stack -->
     <div class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 items-end">
@@ -91,7 +62,7 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
           <button
             v-for="t in THEMES"
             :key="t.key"
-            @click="theme = t.key"
+            @click="setTheme(t.key)"
             :title="t.label"
             :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-all',
               theme === t.key
