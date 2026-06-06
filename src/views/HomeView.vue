@@ -1,11 +1,27 @@
 <script setup>
-import { ref, shallowRef, watch } from 'vue'
-import { APP_NAME, NAV_ITEMS } from '@/config.js'
+import { ref, shallowRef, watch, computed, reactive } from 'vue'
+import { APP_NAME } from '@/config.js'
 import logoUrl from '@/assets/nucleus-logo-transparent.png'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
+import { useRegistry } from '@/composables/useRegistry.js'
+import { resolveWidget } from '@/composables/useWidgets.js'
 
-const cardRefs = NAV_ITEMS.map(() => shallowRef(null))
-const cardHovered = ref(NAV_ITEMS.map(() => false))
+const { apps, widgets, loading } = useRegistry()
+
+const dashboardApps = computed(() => apps.value.filter(a => a.hub?.showOnDashboard !== false))
+const enabledWidgets = computed(() => widgets.value.filter(w => w.enabled !== false))
+
+// Plain array of shallowRefs — matches LiquidGlass's expected mouse-container pattern.
+// Template ref callbacks mutate .value in place so LiquidGlass never gets a new prop identity.
+let cardRefs = []
+
+// Keyed by item.id — robust regardless of ordering or async arrival.
+const hovered = reactive({})
+
+watch(dashboardApps, (items) => {
+  cardRefs = items.map(() => shallowRef(null))
+  items.forEach(item => { if (!(item.id in hovered)) hovered[item.id] = false })
+}, { immediate: true })
 
 const THEMES = [
   { key: 'light',  label: 'Light',  icon: 'M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z' },
@@ -42,7 +58,7 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
 <template>
   <div class="relative min-h-screen bg-slate-100 dark:bg-[#0d0d1a] flex flex-col items-center justify-center p-4 sm:p-8 gap-8 sm:gap-12 overflow-hidden">
 
-    <!-- Colorful background blobs — give the glass something to refract -->
+    <!-- Colorful background blobs -->
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
       <div class="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-violet-400/35 dark:bg-violet-700/50 blur-[120px]" />
       <div class="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-indigo-400/35 dark:bg-indigo-700/50 blur-[120px]" />
@@ -50,7 +66,14 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
       <div class="absolute top-1/4 right-1/4 w-56 h-56 rounded-full bg-pink-400/20 dark:bg-purple-700/30 blur-[80px]" />
     </div>
 
-    <!-- Theme toggle — top right (LiquidGlass pill) -->
+    <!-- Widgets — bottom right stack -->
+    <div class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 items-end">
+      <template v-for="widget in enabledWidgets" :key="widget.id">
+        <component :is="resolveWidget(widget.id)" v-if="resolveWidget(widget.id)" />
+      </template>
+    </div>
+
+    <!-- Theme toggle -->
     <div class="fixed top-4 right-4 z-50" style="width: 114px; height: 46px;">
       <LiquidGlass
         :style="{ position: 'absolute', top: '50%', left: '50%' }"
@@ -86,22 +109,36 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>
 
-    <!-- Nav cards — LiquidGlass -->
+    <!-- Nav cards -->
     <div class="relative z-10 flex flex-col gap-4 items-center w-full">
+
+      <!-- Loading skeleton -->
+      <template v-if="loading">
+        <div
+          v-for="n in 2"
+          :key="n"
+          class="animate-pulse rounded-[20px] bg-white/20 dark:bg-white/5"
+          style="height: 80px; width: min(340px, 90vw);"
+        />
+      </template>
+
+      <!-- App cards from registry -->
       <a
-        v-for="(item, i) in NAV_ITEMS"
-        :key="item.to"
+        v-else
+        v-for="(item, i) in dashboardApps"
+        :key="item.id"
         :ref="el => { if (el) cardRefs[i].value = el }"
-        :href="item.to"
-        @mouseenter="cardHovered[i] = true"
-        @mouseleave="cardHovered[i] = false"
+        :href="item.route + '/'"
+        @mouseenter="hovered[item.id] = true"
+        @mouseleave="hovered[item.id] = false"
         class="relative block cursor-pointer"
         :style="{
           height: '80px',
           width: 'min(340px, 90vw)',
+          overflow: 'hidden',
           transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-          transform: cardHovered[i] ? 'translateY(-5px)' : 'translateY(0)',
-          boxShadow: cardHovered[i] ? '0 16px 48px rgba(99,102,241,0.55)' : '0 0 0 rgba(0,0,0,0)',
+          transform: hovered[item.id] ? 'translateY(-5px)' : 'translateY(0)',
+          boxShadow: hovered[item.id] ? '0 16px 48px rgba(99,102,241,0.55)' : '0 0 0 rgba(0,0,0,0)',
           borderRadius: '20px',
         }"
       >
@@ -122,21 +159,21 @@ sysMq.addEventListener('change', () => { if (theme.value === 'system') applyThem
             <div class="flex items-center gap-4">
               <div
                 class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                :style="{ background: cardHovered[i] ? 'rgb(99,102,241)' : 'rgba(99,102,241,0.75)', transition: 'background 0.25s ease' }"
+                :style="{ background: hovered[item.id] ? 'rgb(99,102,241)' : 'rgba(99,102,241,0.75)', transition: 'background 0.25s ease' }"
               >
                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
                 </svg>
               </div>
               <div>
-                <p class="font-semibold text-slate-900 dark:text-white leading-tight">{{ item.label }}</p>
+                <p class="font-semibold text-slate-900 dark:text-white leading-tight">{{ item.name }}</p>
                 <p class="text-xs text-slate-500 dark:text-white/60 mt-0.5">{{ item.description }}</p>
               </div>
             </div>
             <svg
               class="w-4 h-4 shrink-0"
-              :style="{ color: cardHovered[i] ? 'rgba(99,102,241,0.8)' : '', transition: 'color 0.25s ease' }"
-              :class="cardHovered[i] ? '' : 'text-slate-400 dark:text-white/40'"
+              :style="{ color: hovered[item.id] ? 'rgba(99,102,241,0.8)' : '', transition: 'color 0.25s ease' }"
+              :class="hovered[item.id] ? '' : 'text-slate-400 dark:text-white/40'"
               fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
             >
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

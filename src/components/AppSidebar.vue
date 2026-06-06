@@ -1,7 +1,15 @@
 <script setup>
-import { ref, watch, onUnmounted } from 'vue'
-import { APP_NAME, NAV_ITEMS } from '@/config.js'
+import { ref, watch, onUnmounted, computed } from 'vue'
+import { APP_NAME } from '@/config.js'
 import logoUrl from '@/assets/nucleus-logo-transparent.png'
+import { useRegistry } from '@/composables/useRegistry.js'
+
+const { apps } = useRegistry()
+const NAV_ITEMS = computed(() =>
+  apps.value
+    .filter(a => a.hub?.showInSidebar !== false)
+    .map(a => ({ label: a.name, to: a.route + '/', description: a.description, icon: a.icon }))
+)
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['close'])
