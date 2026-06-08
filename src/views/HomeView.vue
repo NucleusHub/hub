@@ -57,6 +57,7 @@ const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
         :displacement-scale="55"
         :blur-amount="0.1"
         :saturation="160"
+        :elasticity="0"
       >
         <div class="flex gap-0.5">
           <button
@@ -125,7 +126,7 @@ const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
           :blur-amount="0.12"
           :saturation="160"
           :aberration-intensity="3"
-          :elasticity="0.4"
+          :elasticity="0"
           :mouse-container="cardRefs[i]"
           class="cursor-pointer"
           @click="() => {}"
