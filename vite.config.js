@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@core': fileURLToPath(new URL('./core', import.meta.url)),
+      '@widgets-core': fileURLToPath(new URL('../widgets/core', import.meta.url)),
     },
   },
   server: {

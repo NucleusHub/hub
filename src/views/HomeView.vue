@@ -1,5 +1,5 @@
 <script setup>
-import { shallowRef, watch, computed, reactive } from 'vue'
+import { shallowRef, watch, computed, reactive, ref } from 'vue'
 import { APP_NAME } from '@/config.js'
 import logoDark from '@/assets/nucleus-logo-transparent.png'
 import logoLight from '@/assets/nucleus-logo-light-1.png'
@@ -8,11 +8,16 @@ import { useRegistry } from '@core/useRegistry.js'
 import { useTheme } from '@core/useTheme.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
+import WidgetShell from '@widgets-core/components/WidgetShell.vue'
+import { useWidgetVisibility } from '@widgets-core/composables/useWidgetVisibility.js'
 
 const { apps, widgets, loading } = useRegistry()
+const { hiddenIds, show } = useWidgetVisibility()
+const showRestorePanel = ref(false)
 
 const dashboardApps = computed(() => apps.value.filter(a => a.hub?.showOnDashboard !== false))
-const enabledWidgets = computed(() => widgets.value.filter(w => w.enabled !== false))
+const enabledWidgets = computed(() => widgets.value.filter(w => w.enabled !== false && !hiddenIds.value.has(w.id)))
+const hiddenWidgets  = computed(() => widgets.value.filter(w => w.enabled !== false && hiddenIds.value.has(w.id)))
 
 // Plain array of shallowRefs — matches LiquidGlass's expected mouse-container pattern.
 // Template ref callbacks mutate .value in place so LiquidGlass never gets a new prop identity.
@@ -41,11 +46,40 @@ const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
 
     <BackgroundBlobs />
 
-    <!-- Widgets — bottom right stack -->
-    <div class="fixed bottom-4 right-4 z-40 flex flex-col gap-3 items-end">
+    <!-- Widgets — mobile: full-width bottom bar; desktop: bottom-right stack -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 flex flex-col gap-2 p-2 sm:bottom-4 sm:right-4 sm:left-auto sm:p-0 sm:items-end sm:gap-3">
       <template v-for="widget in enabledWidgets" :key="widget.id">
-        <component :is="resolveWidget(widget.id)" v-if="resolveWidget(widget.id)" />
+        <WidgetShell :widget-id="widget.id" :widget-name="widget.name">
+          <component :is="resolveWidget(widget.id)" v-if="resolveWidget(widget.id)" />
+        </WidgetShell>
       </template>
+
+      <!-- Restore hidden widgets -->
+      <div v-if="hiddenWidgets.length" class="flex flex-col items-end gap-1">
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-white/50 hover:text-white/80 bg-black/30 hover:bg-black/50 backdrop-blur transition-colors"
+          @click="showRestorePanel = !showRestorePanel"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+          </svg>
+          {{ hiddenWidgets.length }} hidden
+        </button>
+        <Transition name="restore-fade">
+          <div v-if="showRestorePanel" class="flex flex-col gap-1 items-end">
+            <div
+              v-for="w in hiddenWidgets"
+              :key="w.id"
+              class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-black/40 backdrop-blur text-white/60"
+            >
+              <span>{{ w.name }}</span>
+              <button class="text-white/50 hover:text-white transition-colors cursor-pointer" @click="show(w.id)">
+                Restore
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <!-- Theme toggle -->
@@ -160,3 +194,8 @@ const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
     </div>
   </div>
 </template>
+
+<style scoped>
+.restore-fade-enter-active, .restore-fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.restore-fade-enter-from, .restore-fade-leave-to { opacity: 0; transform: translateY(4px); }
+</style>
