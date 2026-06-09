@@ -4,8 +4,8 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig({
-  plugins: [vue(), vueDevTools(), tailwindcss()],
+export default defineConfig(({ mode }) => ({
+  plugins: [vue(), mode !== 'production' && vueDevTools(), tailwindcss()].filter(Boolean),
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -18,4 +18,4 @@ export default defineConfig({
     port: 5174,
     allowedHosts: ['nucleus.home', 'server.tail874d1f.ts.net'],
   },
-})
+}))
