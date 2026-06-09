@@ -60,12 +60,28 @@ const THEME_DIMS = { small: { w: 114, h: 46 }, large: { w: null, h: 46 } }
 const APPS_DIMS  = {
   small:  { iconSvg: 30 },
   medium: { iconSvg: 30 },
-  large:  { cardH: 80, padding: '16px 20px', iconBox: 36, iconSvg: 16, innerW: 380 },
+  large:  { cardH: 80, padding: '16px 20px', iconBox: 36, iconSvg: 16 },
 }
 
-const themeDims    = computed(() => THEME_DIMS[hubTheme.value.size] ?? THEME_DIMS.small)
+const vw           = ref(typeof window !== 'undefined' ? window.innerWidth : 1280)
+const isMobile     = computed(() => vw.value < 768)
+onMounted(() => { window.addEventListener('resize', () => { vw.value = window.innerWidth }) })
+
+// On mobile: theme changer is always small and always pinned top-right
+const effectiveThemeSize = computed(() => isMobile.value ? 'small' : (hubTheme.value.size ?? 'small'))
+const effectiveThemePos  = computed(() =>
+  isMobile.value
+    ? { x: Math.max(0, vw.value - 122), y: 8 }
+    : hubTheme.value.position
+)
+
+const themeDims    = computed(() => THEME_DIMS[effectiveThemeSize.value] ?? THEME_DIMS.small)
 const appsDims     = computed(() => APPS_DIMS[hubApps.value.size]   ?? APPS_DIMS.large)
-const appsCardW    = computed(() => HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizeDims[hubApps.value.size] ?? 420)
+// Clamp card width to viewport with some breathing room
+const appsCardW    = computed(() => {
+  const raw = HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizeDims[hubApps.value.size] ?? 420
+  return Math.min(raw, vw.value - 32)
+})
 // Grid layout computeds (used for small/medium — individual glass card per app)
 // itemW ≈ appsCardW/4 - 10 (slightly smaller than flex slot so cards breathe)
 const gridItemW    = computed(() => Math.floor(appsCardW.value / 4) - 10)
@@ -114,28 +130,30 @@ function setHubAppsSize(size) {
     <!-- Fixed widget canvas — all freely-positioned elements live here -->
     <div class="fixed inset-0 z-30 pointer-events-none">
 
-      <!-- Regular dashboard widgets -->
-      <div
-        v-for="w in enabledWidgets"
-        :key="w.id"
-        class="pointer-events-auto"
-        :style="{
-          position: 'absolute',
-          left:  w.position.x + 'px',
-          top:   w.position.y + 'px',
-          width: getWidgetWidth(w, w.size) + 'px',
-        }"
-      >
-        <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" />
-      </div>
+      <!-- Regular dashboard widgets — hidden on mobile -->
+      <template v-if="!isMobile">
+        <div
+          v-for="w in enabledWidgets"
+          :key="w.id"
+          class="pointer-events-auto"
+          :style="{
+            position: 'absolute',
+            left:  w.position.x + 'px',
+            top:   w.position.y + 'px',
+            width: getWidgetWidth(w, w.size) + 'px',
+          }"
+        >
+          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" />
+        </div>
+      </template>
 
       <!-- ── Theme Changer ── -->
       <div
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
-          left: hubTheme.position.x + 'px',
-          top:  hubTheme.position.y + 'px',
+          left: effectiveThemePos.x + 'px',
+          top:  effectiveThemePos.y + 'px',
           width:  themeDims.w != null ? themeDims.w + 'px' : 'max-content',
           height: themeDims.h + 'px',
         }"
@@ -144,7 +162,7 @@ function setHubAppsSize(size) {
                     bg-white/20 dark:bg-white/[0.08] backdrop-blur-md
                     border border-white/35 dark:border-white/[0.15]">
           <!-- Small: icons only -->
-          <template v-if="hubTheme.size === 'small'">
+          <template v-if="effectiveThemeSize === 'small'">
             <button
               v-for="t in THEMES"
               :key="t.key"
@@ -324,7 +342,7 @@ function setHubAppsSize(size) {
             class="cursor-pointer"
             @click="() => {}"
           >
-            <div :style="{ width: appsDims.innerW + 'px' }" class="flex items-center justify-between gap-4">
+            <div :style="{ width: (appsCardW - 40) + 'px' }" class="flex items-center justify-between gap-4">
               <div class="flex items-center gap-3">
                 <div
                   class="rounded-xl flex items-center justify-center shrink-0"
