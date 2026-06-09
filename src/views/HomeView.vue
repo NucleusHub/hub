@@ -48,23 +48,35 @@ function hubDefault(id) {
   const vw = typeof window !== 'undefined' ? window.innerWidth  : 1280
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768
   if (id === 'hub-theme') return { position: { x: Math.max(0, vw - 130), y: 16 }, size: 'small', locked: false }
-  return { position: { x: Math.max(16, Math.round((vw - 340) / 2)), y: Math.max(60, Math.round((vh - 280) / 2)) }, size: 'medium', locked: false }
+  return { position: { x: Math.max(16, Math.round((vw - 340) / 2)), y: Math.max(60, Math.round((vh - 280) / 2)) }, size: 'large', locked: false }
 }
 
 const hubTheme = computed(() => states.value.find(s => s.id === 'hub-theme') ?? hubDefault('hub-theme'))
 const hubApps  = computed(() => states.value.find(s => s.id === 'hub-apps')  ?? hubDefault('hub-apps'))
 
 // Dimensions derived from hub widget sizes
-const THEME_DIMS = { small: { w: 114, h: 46 }, large: { w: 210, h: 46 } }
+const THEME_DIMS = { small: { w: 114, h: 46 }, large: { w: null, h: 46 } }
+// small/medium = icon grid; large = horizontal card list (current default)
 const APPS_DIMS  = {
-  small:  { cardH: 60, padding: '10px 14px',  iconBox: 32, iconSvg: 14, innerW: 240 },
-  medium: { cardH: 80, padding: '16px 20px',  iconBox: 36, iconSvg: 16, innerW: 300 },
-  large:  { cardH: 90, padding: '18px 24px',  iconBox: 40, iconSvg: 18, innerW: 380 },
+  small:  { iconSvg: 30 },
+  medium: { iconSvg: 30 },
+  large:  { cardH: 80, padding: '16px 20px', iconBox: 36, iconSvg: 16, innerW: 380 },
 }
 
-const themeDims = computed(() => THEME_DIMS[hubTheme.value.size] ?? THEME_DIMS.small)
-const appsDims  = computed(() => APPS_DIMS[hubApps.value.size]   ?? APPS_DIMS.medium)
-const appsCardW = computed(() => HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizeDims[hubApps.value.size] ?? 340)
+const themeDims    = computed(() => THEME_DIMS[hubTheme.value.size] ?? THEME_DIMS.small)
+const appsDims     = computed(() => APPS_DIMS[hubApps.value.size]   ?? APPS_DIMS.large)
+const appsCardW    = computed(() => HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizeDims[hubApps.value.size] ?? 420)
+// Grid layout computeds (used for small/medium — individual glass card per app)
+// itemW ≈ appsCardW/4 - 10 (slightly smaller than flex slot so cards breathe)
+const gridItemW    = computed(() => Math.floor(appsCardW.value / 4) - 10)
+// LiquidGlass padding so icon fills card: (cardSize - iconSvg) / 2
+const gridIconPad  = computed(() => Math.max(8, Math.floor((gridItemW.value - 30) / 2)) + 'px')
+// medium adds label below the card: card + 4px gap + ~13px text + 3px = 20px
+const gridItemH    = computed(() => hubApps.value.size === 'medium' ? gridItemW.value + 20 : gridItemW.value)
+const gridRows     = computed(() => Math.ceil(Math.max(1, dashboardApps.value.length) / 4))
+const gridHeight   = computed(() =>
+  gridRows.value * gridItemH.value + Math.max(0, gridRows.value - 1) * 8
+)
 
 // LiquidGlass card refs for mouse-tracking
 let cardRefs = []
@@ -124,21 +136,15 @@ function setHubAppsSize(size) {
           position: 'absolute',
           left: hubTheme.position.x + 'px',
           top:  hubTheme.position.y + 'px',
-          width:  themeDims.w + 'px',
+          width:  themeDims.w != null ? themeDims.w + 'px' : 'max-content',
           height: themeDims.h + 'px',
         }"
       >
-        <LiquidGlass
-          :style="{ position: 'absolute', top: '50%', left: '50%' }"
-          :corner-radius="14"
-          padding="5px"
-          :displacement-scale="55"
-          :blur-amount="0.1"
-          :saturation="160"
-          :elasticity="0"
-        >
+        <div class="w-full h-full rounded-[14px] flex items-center px-[5px] gap-0.5
+                    bg-white/20 dark:bg-white/[0.08] backdrop-blur-md
+                    border border-white/35 dark:border-white/[0.15]">
           <!-- Small: icons only -->
-          <div v-if="hubTheme.size === 'small'" class="flex gap-0.5">
+          <template v-if="hubTheme.size === 'small'">
             <button
               v-for="t in THEMES"
               :key="t.key"
@@ -146,17 +152,16 @@ function setHubAppsSize(size) {
               :title="t.label"
               :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-all',
                 theme === t.key
-                  ? 'bg-white/40 text-slate-800 dark:text-white shadow-sm'
+                  ? 'bg-white/40 dark:bg-white/20 text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" />
               </svg>
             </button>
-          </div>
-
+          </template>
           <!-- Large: icons + labels -->
-          <div v-else class="flex gap-0.5">
+          <template v-else>
             <button
               v-for="t in THEMES"
               :key="t.key"
@@ -164,7 +169,7 @@ function setHubAppsSize(size) {
               :title="t.label"
               :class="['cursor-pointer flex items-center justify-center gap-1.5 px-2.5 h-8 rounded-lg transition-all text-xs font-medium',
                 theme === t.key
-                  ? 'bg-white/40 text-slate-800 dark:text-white shadow-sm'
+                  ? 'bg-white/40 dark:bg-white/20 text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -172,8 +177,8 @@ function setHubAppsSize(size) {
               </svg>
               {{ t.label }}
             </button>
-          </div>
-        </LiquidGlass>
+          </template>
+        </div>
       </div>
 
     </div><!-- /widget canvas -->
@@ -223,14 +228,71 @@ function setHubAppsSize(size) {
       <!-- Loading skeleton -->
       <template v-if="loading">
         <div
-          v-for="n in 3"
-          :key="n"
-          class="animate-pulse rounded-[20px] bg-white/20 dark:bg-white/5 mb-3"
-          :style="{ height: appsDims.cardH + 'px' }"
+          v-if="hubApps.size !== 'large'"
+          class="animate-pulse rounded-[20px] bg-white/20 dark:bg-white/5"
+          :style="{ height: gridHeight + 'px' }"
         />
+        <template v-else>
+          <div
+            v-for="n in 3" :key="n"
+            class="animate-pulse rounded-[20px] bg-white/20 dark:bg-white/5 mb-3"
+            :style="{ height: appsDims.cardH + 'px' }"
+          />
+        </template>
       </template>
 
-      <!-- App cards -->
+      <!-- SMALL / MEDIUM — per-item glass cards in a flex grid -->
+      <template v-else-if="hubApps.size !== 'large'">
+        <div
+          class="flex flex-wrap justify-center"
+          :style="{ width: appsCardW + 'px', gap: '8px' }"
+        >
+          <a
+            v-for="item in dashboardApps"
+            :key="item.id"
+            :href="item.route + '/'"
+            class="flex flex-col items-center no-underline"
+            :style="{ width: gridItemW + 'px' }"
+            @mouseenter="hovered[item.id] = true"
+            @mouseleave="hovered[item.id] = false"
+          >
+            <div
+              class="relative overflow-hidden"
+              :class="hubApps.size === 'small' && 'border border-white/35 dark:border-white/[0.15]'"
+              :style="{ width: gridItemW + 'px', height: gridItemW + 'px', borderRadius: '16px' }"
+            >
+              <LiquidGlass
+                :style="{ position: 'absolute', top: '50%', left: '50%' }"
+                :corner-radius="16"
+                :padding="gridIconPad"
+                :displacement-scale="65"
+                :blur-amount="0.12"
+                :saturation="160"
+                :elasticity="0"
+              >
+                <svg
+                  :style="{ width: appsDims.iconSvg + 'px', height: appsDims.iconSvg + 'px' }"
+                  class="transition-all duration-200 shrink-0"
+                  :class="hovered[item.id]
+                    ? 'text-indigo-500 dark:text-indigo-400 scale-110'
+                    : 'text-slate-600 dark:text-white/70'"
+                  fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
+                </svg>
+              </LiquidGlass>
+            </div>
+            <span
+              v-if="hubApps.size === 'medium'"
+              class="mt-1 text-[11px] font-medium text-center leading-tight truncate
+                     text-slate-700/80 dark:text-white/75"
+              :style="{ width: gridItemW + 'px' }"
+            >{{ item.name }}</span>
+          </a>
+        </div>
+      </template>
+
+      <!-- LARGE — horizontal card list (one LiquidGlass per app) -->
       <div v-else class="flex flex-col gap-3">
         <a
           v-for="(item, i) in dashboardApps"
@@ -281,14 +343,8 @@ function setHubAppsSize(size) {
                   </svg>
                 </div>
                 <div>
-                  <p class="font-semibold text-slate-900 dark:text-white leading-tight"
-                     :class="hubApps.size === 'small' ? 'text-sm' : ''">
-                    {{ item.name }}
-                  </p>
-                  <p v-if="hubApps.size !== 'small'"
-                     class="text-xs text-slate-500 dark:text-white/60 mt-0.5">
-                    {{ item.description }}
-                  </p>
+                  <p class="font-semibold text-slate-900 dark:text-white leading-tight">{{ item.name }}</p>
+                  <p class="text-xs text-slate-500 dark:text-white/60 mt-0.5">{{ item.description }}</p>
                 </div>
               </div>
               <svg
@@ -374,4 +430,5 @@ function setHubAppsSize(size) {
   background: rgba(99, 102, 241, 0.5);
   color: #fff;
 }
+
 </style>
