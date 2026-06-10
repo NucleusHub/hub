@@ -143,7 +143,7 @@ function setHubAppsSize(size) {
             width: getWidgetWidth(w, w.size) + 'px',
           }"
         >
-          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" />
+          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" />
         </div>
       </template>
 
