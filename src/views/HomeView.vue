@@ -6,12 +6,19 @@ import logoLight from '@/assets/nucleus-logo-light-1.png'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
 import { useRegistry } from '@core/useRegistry.js'
 import { useTheme } from '@core/useTheme.js'
+import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
+import AvatarCircle from '@core/auth/AvatarCircle.vue'
+import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
 import { useDashboard, HUB_MANIFESTS, getWidgetWidth } from '@pulse/composables/useDashboard.js'
 
 const PulseOverlay = defineAsyncComponent(() => import('@pulse/PulseOverlay.vue'))
+
+const { profile, login } = useAuth()
+const showSwitch = ref(false)
+const switchPreselect = ref(null)
 
 const { apps, widgets: manifests, loading } = useRegistry()
 const { pulseActive, togglePulse } = usePulse()
@@ -24,7 +31,7 @@ watch([allManifests, dashboardLoading], ([ms, dl]) => {
   if (!dl && ms.length) ensureWidgets(ms)
 })
 
-onMounted(fetchState)
+onMounted(() => { fetchState(); loadAccountProfiles() })
 
 const dashboardApps = computed(() =>
   apps.value.filter(a => a.hub?.showOnDashboard !== false)
@@ -47,12 +54,46 @@ const enabledWidgets = computed(() => widgetData.value.filter(w => w.enabled))
 function hubDefault(id) {
   const vw = typeof window !== 'undefined' ? window.innerWidth  : 1280
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768
+  if (id === 'hub-account') return { position: { x: 16, y: 16 }, size: 'small', locked: false }
   if (id === 'hub-theme') return { position: { x: Math.max(0, vw - 130), y: 16 }, size: 'small', locked: false }
   return { position: { x: Math.max(16, Math.round((vw - 340) / 2)), y: Math.max(60, Math.round((vh - 280) / 2)) }, size: 'large', locked: false }
 }
 
-const hubTheme = computed(() => states.value.find(s => s.id === 'hub-theme') ?? hubDefault('hub-theme'))
-const hubApps  = computed(() => states.value.find(s => s.id === 'hub-apps')  ?? hubDefault('hub-apps'))
+const hubTheme   = computed(() => states.value.find(s => s.id === 'hub-theme')   ?? hubDefault('hub-theme'))
+const hubApps    = computed(() => states.value.find(s => s.id === 'hub-apps')    ?? hubDefault('hub-apps'))
+const hubAccount = computed(() => states.value.find(s => s.id === 'hub-account') ?? hubDefault('hub-account'))
+
+const effectiveAccountSize = computed(() => isMobile.value ? 'small' : (hubAccount.value.size ?? 'small'))
+const effectiveAccountPos  = computed(() =>
+  isMobile.value ? { x: 16, y: 8 } : hubAccount.value.position
+)
+
+// Profiles loaded for the large account widget
+const accountProfiles = ref([])
+async function loadAccountProfiles() {
+  const res = await fetch('/api/auth/profiles', { credentials: 'include' })
+  accountProfiles.value = res.ok ? await res.json() : []
+}
+
+const recentProfiles = computed(() => {
+  if (!profile.value) return []
+  const ids = getRecentProfileIds()
+  const others = accountProfiles.value.filter(p => p._id !== profile.value._id)
+  return [
+    ...ids.map(id => others.find(p => p._id === id)).filter(Boolean),
+    ...others.filter(p => !ids.includes(p._id)),
+  ].slice(0, 2)
+})
+
+async function switchToProfile(p) {
+  if (p.hasPin) {
+    switchPreselect.value = p._id
+    showSwitch.value = true
+  } else {
+    try { await login(p._id, null) } catch {}
+    window.location.reload()
+  }
+}
 
 // Dimensions derived from hub widget sizes
 const THEME_DIMS = { small: { w: 114, h: 46 }, large: { w: null, h: 46 } }
@@ -147,6 +188,64 @@ function setHubAppsSize(size) {
         </div>
       </template>
 
+      <!-- ── Account Widget ── -->
+      <div v-if="profile"
+        class="pointer-events-auto"
+        :style="{
+          position: 'absolute',
+          left: effectiveAccountPos.x + 'px',
+          top:  effectiveAccountPos.y + 'px',
+          width: effectiveAccountSize === 'large' ? '220px' : '40px',
+        }">
+        <!-- Small: avatar circle -->
+        <button v-if="effectiveAccountSize === 'small'"
+          @click="showSwitch = true"
+          class="w-10 h-10 rounded-full opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
+          title="Switch account">
+          <AvatarCircle :name="profile.name" :color="profile.color" :emoji="profile.emoji"
+            :admin="profile.role === 'admin'" :size="40" />
+        </button>
+
+        <!-- Large: name + recents + manage -->
+        <div v-else class="rounded-[14px] bg-white/20 dark:bg-white/[0.08] backdrop-blur-md border border-white/35 dark:border-white/[0.15] overflow-hidden">
+          <!-- Current profile -->
+          <button @click="showSwitch = true"
+            class="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
+            <AvatarCircle :name="profile.name" :color="profile.color" :emoji="profile.emoji"
+              :admin="profile.role === 'admin'" :size="32" />
+            <span class="text-sm font-semibold text-slate-800 dark:text-white flex-1 text-left truncate">{{ profile.name }}</span>
+            <svg class="w-3.5 h-3.5 text-slate-400 dark:text-white/40 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+
+          <!-- Recent profiles -->
+          <template v-if="recentProfiles.length">
+            <div class="h-px bg-white/25 dark:bg-white/10 mx-3" />
+            <button v-for="p in recentProfiles" :key="p._id"
+              @click="switchToProfile(p)"
+              class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
+              <AvatarCircle :name="p.name" :color="p.color" :emoji="p.emoji"
+                :admin="p.role === 'admin'" :size="26" />
+              <span class="text-xs font-medium text-slate-700 dark:text-white/75 flex-1 text-left truncate">{{ p.name }}</span>
+              <svg v-if="p.hasPin" class="w-2.5 h-2.5 text-violet-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V6a3 3 0 0 0-3-3z"/>
+              </svg>
+            </button>
+          </template>
+
+          <div class="h-px bg-white/25 dark:bg-white/10 mx-3" />
+          <!-- Manage profiles -->
+          <button @click="showSwitch = true"
+            class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+            </svg>
+            <span class="text-xs font-medium">Manage profiles</span>
+          </button>
+        </div>
+      </div>
+
       <!-- ── Theme Changer ── -->
       <div
         class="pointer-events-auto"
@@ -200,6 +299,9 @@ function setHubAppsSize(size) {
       </div>
 
     </div><!-- /widget canvas -->
+
+    <ProfileSelector v-if="showSwitch" :closeable="true" :preselected-id="switchPreselect"
+      @close="showSwitch = false; switchPreselect = null" />
 
     <!-- Pulse toggle — always fixed, outside the movable canvas -->
     <button
