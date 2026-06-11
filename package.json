@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@zaosoula/liquid-glass-vue": "^1.1.2",
+    "three": "^0.184.0",
     "vue": "^3.5.32",
     "vue-router": "^5.1.0"
   },

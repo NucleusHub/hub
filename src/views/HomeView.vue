@@ -9,6 +9,7 @@ import { useTheme } from '@core/useTheme.js'
 import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
+import ParticleLogo from '@/components/ParticleLogo.vue'
 import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
@@ -152,6 +153,10 @@ const THEMES = [
 
 const { theme, isDark, setTheme } = useTheme()
 const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
+
+const logoSize = ref(window.innerWidth < 640 ? 170 : 220)
+const onLogoResize = () => { logoSize.value = window.innerWidth < 640 ? 170 : 220 }
+onMounted(() => window.addEventListener('resize', onLogoResize))
 
 const hubAppsSizes = HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizes
 
@@ -321,7 +326,7 @@ function setHubAppsSize(size) {
 
     <!-- Logo + title — centered in page flow -->
     <div class="relative flex flex-col items-center gap-4 text-center z-10">
-      <img :src="logoUrl" alt="Nucleus" class="w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+      <ParticleLogo :size="logoSize" :dark="isDark" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>
