@@ -9,7 +9,7 @@ import { useTheme } from '@core/useTheme.js'
 import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
-import ParticleLogo from '@/components/ParticleLogo.vue'
+import NucleusOrbit from '@/components/NucleusOrbit.vue'
 import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
@@ -40,7 +40,7 @@ const dashboardApps = computed(() =>
 
 // Regular dashboard widgets (not hub system elements)
 const widgetData = computed(() => {
-  const ms = manifests.value.filter(m => m.slot !== 'system' && m.slot !== 'system-hub')
+  const ms = manifests.value.filter(m => m.slot !== 'system' && m.slot !== 'system-hub' && m.slot !== 'nucleus')
   return ms.map(m => {
     const s = states.value.find(s => s.id === m.id)
     return s
@@ -326,7 +326,7 @@ function setHubAppsSize(size) {
 
     <!-- Logo + title — centered in page flow -->
     <div class="relative flex flex-col items-center gap-4 text-center z-10">
-      <ParticleLogo :size="logoSize" :dark="isDark" />
+      <NucleusOrbit :size="logoSize" :dark="isDark" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>

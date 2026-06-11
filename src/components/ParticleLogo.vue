@@ -7,6 +7,8 @@ const props = defineProps({
   size: { type: Number, default: 220 },
   /** Dark theme uses the glowing additive palette; light uses the soft logo colors. */
   dark: { type: Boolean, default: true },
+  /** When true, the particles stay fully spread regardless of cursor proximity. */
+  active: { type: Boolean, default: false },
 })
 
 const container = ref(null)
@@ -23,11 +25,12 @@ const PALETTES = {
     glowOpacity: 0.55,
   },
   light: {
-    core: new THREE.Color('#c58efb'),
-    inner: new THREE.Color('#986df5'),
-    outer: new THREE.Color('#a3b7fb'),
+    // Pink core → light blue outer, matching the light logo's gradient.
+    core: new THREE.Color('#eaa3ef'),
+    inner: new THREE.Color('#cf90ee'),
+    outer: new THREE.Color('#8ec0fb'),
     blending: THREE.NormalBlending,
-    glowOpacity: 0.35,
+    glowOpacity: 0.4,
   },
 }
 
@@ -242,8 +245,10 @@ function buildScene() {
 
     // Asymmetric timing: spreads out quickly as the cursor approaches, but
     // reassembles slowly once it leaves (a lazy settle, not an instant snap).
-    const rate = targetExcite > excite ? 0.2 : 0.02
-    excite += (targetExcite - excite) * rate
+    // `active` holds the spread open (orbit hovered / Pulse editing).
+    const target = Math.max(targetExcite, props.active ? 1 : 0)
+    const rate = target > excite ? 0.2 : 0.02
+    excite += (target - excite) * rate
 
     // Hovering close → kick a spin surge the instant the cursor arrives
     // (driven by raw proximity, not the slow gather), then let it coast down
