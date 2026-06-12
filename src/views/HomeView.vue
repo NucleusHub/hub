@@ -196,7 +196,7 @@ function setHubAppsSize(size) {
       </template>
 
       <!-- ── Account Widget ── -->
-      <div v-if="profile"
+      <div v-if="profile && !tempHidden.has('hub-account')"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
@@ -255,6 +255,7 @@ function setHubAppsSize(size) {
 
       <!-- ── Theme Changer ── -->
       <div
+        v-if="!tempHidden.has('hub-theme')"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',

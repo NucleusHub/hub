@@ -11,7 +11,7 @@ const props = defineProps({
   dark: { type: Boolean, default: true },
 })
 
-const { pulseActive } = usePulse()
+const { pulseActive, isTempHidden } = usePulse()
 const { widgets: dashStates, getWidgetState, setWidgetState, saveState } = useDashboard()
 
 // A node is pinned when its (per-user) dashboard state has locked = true.
@@ -64,6 +64,7 @@ const nodes = reactive(
 const activeNodes = computed(() => {
   if (isMobile.value) return []
   return nodes.filter((n) => {
+    if (isTempHidden(n.id)) return false
     const st = dashStates.value.find((w) => w.id === n.id)
     return st ? st.enabled !== false : true
   })
