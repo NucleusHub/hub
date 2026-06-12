@@ -124,6 +124,8 @@ function makePoints(data, sprite, size, blending) {
 function buildScene() {
   const pal = props.dark ? PALETTES.dark : PALETTES.light
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // Spread (cursor/active displacement) is disabled on mobile — the core just spins.
+  const isMobile = window.innerWidth < 768
   const rand = rng(1337)
 
   // Overscan: the canvas is drawn larger than the logo's layout footprint so
@@ -221,6 +223,7 @@ function buildScene() {
   const PROX_PX = 100 // distance from the logo at which it starts reacting
   let targetExcite = 0
   const onPointer = e => {
+    if (isMobile) return
     const r = container.value.getBoundingClientRect()
     // Distance from the pointer to the nearest edge of the canvas (0 if inside).
     const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right)
@@ -246,7 +249,7 @@ function buildScene() {
     // Asymmetric timing: spreads out quickly as the cursor approaches, but
     // reassembles slowly once it leaves (a lazy settle, not an instant snap).
     // `active` holds the spread open (orbit hovered / Pulse editing).
-    const target = Math.max(targetExcite, props.active ? 1 : 0)
+    const target = isMobile ? 0 : Math.max(targetExcite, props.active ? 1 : 0)
     const rate = target > excite ? 0.2 : 0.02
     excite += (target - excite) * rate
 

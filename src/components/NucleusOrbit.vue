@@ -21,6 +21,8 @@ function lockedOf(id) {
 
 const wrap = ref(null)
 const open = ref(false)
+// System (orbit) widgets are hidden on mobile — too cramped to be useful.
+const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false)
 // Core centre in viewport coords — the teleported orbit layer anchors here.
 const cx = ref(0)
 const cy = ref(0)
@@ -58,13 +60,14 @@ const nodes = reactive(
   })
 )
 
-// Only nodes Pulse has left enabled (defaults to on).
-const activeNodes = computed(() =>
-  nodes.filter((n) => {
+// Only nodes Pulse has left enabled (defaults to on). Hidden entirely on mobile.
+const activeNodes = computed(() => {
+  if (isMobile.value) return []
+  return nodes.filter((n) => {
     const st = dashStates.value.find((w) => w.id === n.id)
     return st ? st.enabled !== false : true
   })
-)
+})
 
 // Restore saved positions once the (per-user) dashboard state loads.
 const restored = new Set()
@@ -199,12 +202,15 @@ function frame() {
   }
 }
 
+const onResize = () => { isMobile.value = window.innerWidth < 768 }
 onMounted(() => {
   window.addEventListener('pointermove', onMove)
+  window.addEventListener('resize', onResize)
   raf = requestAnimationFrame(frame)
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onMove)
+  window.removeEventListener('resize', onResize)
   cancelAnimationFrame(raf)
 })
 

@@ -335,7 +335,7 @@ function setHubAppsSize(size) {
     <div class="relative z-10 mt-6" :style="{ width: appsCardW + 'px' }">
       <!-- Pulse size toolbar — absolute so it doesn't shift the cards -->
       <Transition name="pulse-fade">
-        <div v-if="pulseActive" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
+        <div v-if="pulseActive && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
           <div class="hub-ctrl-bar">
             <span class="hub-ctrl-label">App Buttons</span>
             <div class="hub-ctrl-divider" />
