@@ -104,6 +104,10 @@ function saveNode(n) {
 // Deploy: 0 = collapsed into the core, 1 = flown out to node positions.
 const deploy = ref(0)
 const expanded = computed(() => open.value || pulseActive.value)
+// "Spread" = opened by hover, with system widgets out, but NOT during Pulse
+// editing (where the dashboard must stay readable). Drives the background blur
+// and lifts just the particle logo above it. Disabled on mobile (no nodes).
+const spread = computed(() => open.value && !pulseActive.value && !isMobile.value)
 const dragging = ref(null)
 
 // ── Proximity: open near the core, stay open near a node (not the app buttons) ─
@@ -236,12 +240,15 @@ function lineStyle(n) {
 </script>
 
 <template>
-  <div ref="wrap" class="orbit">
+  <div ref="wrap" class="orbit" :class="{ 'orbit-lift': spread }">
     <ParticleLogo :size="size" :dark="dark" :active="expanded" />
 
     <!-- Teleported to body so a high z-index escapes the logo's stacking
          context and floats above the Pulse overlay. Anchored to the core. -->
     <Teleport to="body">
+    <!-- Backdrop blur behind the core + system widgets while spread. Sits below
+         the orbit layer (z 100) and the raised logo (HomeView), above the page. -->
+    <div class="orbit-blur" :class="{ on: spread }" />
     <div class="orbit-center" :style="{ left: cx + 'px', top: cy + 'px' }">
       <div
         v-for="n in activeNodes"
@@ -281,6 +288,26 @@ function lineStyle(n) {
   position: relative;
   display: inline-block;
   line-height: 0;
+}
+/* Lift only the particle logo above the backdrop blur while spread. Relies on
+   no ancestor (logo wrapper / #app / page root) creating a stacking context. */
+.orbit-lift {
+  z-index: 70;
+}
+.orbit-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* above the page (canvas 30, pulse 50); below the raised core (70) + orbit (100) */
+  pointer-events: none;
+  background: rgba(8, 8, 16, 0);
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transition: backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease, background 0.35s ease;
+}
+.orbit-blur.on {
+  background: rgba(8, 8, 16, 0.05);
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
 }
 .orbit-center {
   position: fixed;

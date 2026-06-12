@@ -328,8 +328,10 @@ function setHubAppsSize(size) {
       </svg>
     </button>
 
-    <!-- Logo + title — centered in page flow -->
-    <div class="relative flex flex-col items-center gap-4 text-center z-10">
+    <!-- Logo + title — centered in page flow. No z-index here (no stacking
+         context) so the particle logo can lift itself above the orbit blur
+         while the title stays behind it. -->
+    <div class="relative flex flex-col items-center gap-4 text-center">
       <NucleusOrbit :size="logoSize" :dark="isDark" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
