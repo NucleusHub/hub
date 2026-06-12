@@ -22,7 +22,7 @@ const showSwitch = ref(false)
 const switchPreselect = ref(null)
 
 const { apps, widgets: manifests, loading } = useRegistry()
-const { pulseActive, togglePulse } = usePulse()
+const { pulseActive, togglePulse, tempHidden } = usePulse()
 const { widgets: states, loading: dashboardLoading, fetchState, ensureWidgets, getWidgetState, setWidgetState, saveState } = useDashboard()
 
 // All manifests passed to Pulse: registry widgets + hub pseudo-widgets
@@ -49,7 +49,9 @@ const widgetData = computed(() => {
   })
 })
 
-const enabledWidgets = computed(() => widgetData.value.filter(w => w.enabled))
+// Temp-hidden widgets vanish from the canvas while Pulse is open; the set is
+// cleared on close, so they reappear the moment edit mode ends.
+const enabledWidgets = computed(() => widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id)))
 
 // Hub UI states — with sensible viewport-relative defaults before DB loads
 function hubDefault(id) {
