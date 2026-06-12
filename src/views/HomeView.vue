@@ -10,6 +10,7 @@ import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
 import NucleusOrbit from '@/components/NucleusOrbit.vue'
+import WidgetConfigModal from '@/components/WidgetConfigModal.vue'
 import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
@@ -191,7 +192,7 @@ function setHubAppsSize(size) {
             width: getWidgetWidth(w, w.size) + 'px',
           }"
         >
-          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" />
+          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" :dark="isDark" :config="w.config" />
         </div>
       </template>
 
@@ -495,6 +496,9 @@ function setHubAppsSize(size) {
         <PulseOverlay v-if="pulseActive" :manifests="allManifests" />
       </Transition>
     </Teleport>
+
+    <!-- Widget settings modal (opened from a widget's Pulse gear button) -->
+    <WidgetConfigModal />
   </div>
 </template>
 
