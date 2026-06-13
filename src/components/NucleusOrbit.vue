@@ -4,6 +4,7 @@ import ParticleLogo from './ParticleLogo.vue'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import { usePulse } from '@pulse/composables/usePulse.js'
 import { useDashboard } from '@pulse/composables/useDashboard.js'
+import { useRegistry } from '@core/useRegistry.js'
 import PulseWidgetControls from '@pulse/components/PulseWidgetControls.vue'
 
 const props = defineProps({
@@ -13,6 +14,9 @@ const props = defineProps({
 const emit = defineEmits(['spread'])
 
 const { pulseActive, isTempHidden } = usePulse()
+const { disabledWidgetIds, disabledAppIds } = useRegistry()
+// Pulse disabled globally → no system widgets at all.
+const pulseDisabled = computed(() => disabledAppIds.value.has('pulse'))
 const { widgets: dashStates, getWidgetState, setWidgetState, saveState } = useDashboard()
 
 // A node is pinned when its (per-user) dashboard state has locked = true.
@@ -63,8 +67,10 @@ const nodes = reactive(
 
 // Only nodes Pulse has left enabled (defaults to on). Hidden entirely on mobile.
 const activeNodes = computed(() => {
-  if (isMobile.value) return []
+  if (isMobile.value || pulseDisabled.value) return []
   return nodes.filter((n) => {
+    // Globally disabled by an admin (incl. cascade from disabling System Info).
+    if (disabledWidgetIds.value.has(n.id)) return false
     if (isTempHidden(n.id)) return false
     const st = dashStates.value.find((w) => w.id === n.id)
     return st ? st.enabled !== false : true
@@ -109,7 +115,7 @@ const expanded = computed(() => open.value || pulseActive.value)
 // editing (where the dashboard must stay readable). Emitted to HomeView, which
 // renders the background blur (must live inside #app to share its backdrop
 // root) and lifts just the particle logo above it. Disabled on mobile.
-const spread = computed(() => open.value && !pulseActive.value && !isMobile.value)
+const spread = computed(() => open.value && !pulseActive.value && !isMobile.value && !pulseDisabled.value)
 watch(spread, (v) => emit('spread', v), { immediate: true })
 const dragging = ref(null)
 

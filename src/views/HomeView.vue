@@ -11,6 +11,7 @@ import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
 import NucleusOrbit from '@/components/NucleusOrbit.vue'
 import WidgetConfigModal from '@/components/WidgetConfigModal.vue'
+import AppIcon from '@core/AppIcon.vue'
 import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
@@ -25,7 +26,11 @@ const showSwitch = ref(false)
 const orbitSpread = ref(false)
 const switchPreselect = ref(null)
 
-const { apps, widgets: manifests, loading } = useRegistry()
+const { apps, widgets: manifests, disabledAppIds, loading } = useRegistry()
+// Pulse is the widget launcher/manager. Disabling it globally turns off the
+// whole widget system (button, overlay, dashboard + orbit widgets); only the
+// core hub UI (app buttons, account, theme) remains.
+const pulseDisabled = computed(() => disabledAppIds.value.has('pulse'))
 const { pulseActive, togglePulse, tempHidden } = usePulse()
 const { widgets: states, loading: dashboardLoading, fetchState, ensureWidgets, getWidgetState, setWidgetState, saveState } = useDashboard()
 
@@ -54,8 +59,11 @@ const widgetData = computed(() => {
 })
 
 // Temp-hidden widgets vanish from the canvas while Pulse is open; the set is
-// cleared on close, so they reappear the moment edit mode ends.
-const enabledWidgets = computed(() => widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id)))
+// cleared on close, so they reappear the moment edit mode ends. When Pulse is
+// globally disabled, no dashboard widgets render at all.
+const enabledWidgets = computed(() =>
+  pulseDisabled.value ? [] : widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id))
+)
 
 // Hub UI states — with sensible viewport-relative defaults before DB loads
 function hubDefault(id) {
@@ -321,8 +329,10 @@ function setHubAppsSize(size) {
     <ProfileSelector v-if="showSwitch" :closeable="true" :preselected-id="switchPreselect"
       @close="showSwitch = false; switchPreselect = null" />
 
-    <!-- Pulse toggle — always fixed, outside the movable canvas -->
+    <!-- Pulse toggle — always fixed, outside the movable canvas. Hidden when
+         Pulse is globally disabled. -->
     <button
+      v-if="!pulseDisabled"
       class="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
       :class="pulseActive
         ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
@@ -410,16 +420,14 @@ function setHubAppsSize(size) {
                 :saturation="160"
                 :elasticity="0"
               >
-                <svg
+                <AppIcon
+                  :svg="item.iconSvg"
                   :style="{ width: appsDims.iconSvg + 'px', height: appsDims.iconSvg + 'px' }"
                   class="transition-all duration-200 shrink-0"
                   :class="hovered[item.id]
                     ? 'text-indigo-500 dark:text-indigo-400 scale-110'
                     : 'text-slate-600 dark:text-white/70'"
-                  fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-                </svg>
+                />
               </LiquidGlass>
             </div>
             <span
@@ -475,12 +483,11 @@ function setHubAppsSize(size) {
                     transition: 'background 0.25s ease',
                   }"
                 >
-                  <svg
+                  <AppIcon
+                    :svg="item.iconSvg"
                     :style="{ width: appsDims.iconSvg + 'px', height: appsDims.iconSvg + 'px' }"
-                    class="text-white" fill="none" stroke="currentColor" stroke-width="2.25" viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" :d="item.icon" />
-                  </svg>
+                    class="text-white"
+                  />
                 </div>
                 <div>
                   <p class="font-semibold text-slate-900 dark:text-white leading-tight">{{ item.name }}</p>
@@ -504,7 +511,7 @@ function setHubAppsSize(size) {
     <!-- Pulse overlay -->
     <Teleport to="body">
       <Transition name="pulse-fade">
-        <PulseOverlay v-if="pulseActive" :manifests="allManifests" />
+        <PulseOverlay v-if="pulseActive && !pulseDisabled" :manifests="allManifests" />
       </Transition>
     </Teleport>
 

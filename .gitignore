@@ -42,3 +42,7 @@ __screenshots__/
 
 # Misc
 tmp/
+
+src/views/GraphicsView.vue
+public/graphics.png
+src/views/Cards/*
