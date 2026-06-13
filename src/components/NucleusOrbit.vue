@@ -303,9 +303,9 @@ function lineStyle(n) {
      transition) instead of animating backdrop-filter, which is flaky and was
      getting mangled by the CSS minifier (empty blur(), dropped property). */
   opacity: 0;
-  background: rgba(8, 8, 16, 0.05);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(8, 8, 16, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: opacity 0.3s ease;
 }
 .orbit-blur.on {
