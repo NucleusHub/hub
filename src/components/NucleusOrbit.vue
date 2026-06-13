@@ -299,15 +299,17 @@ function lineStyle(n) {
   inset: 0;
   z-index: 60; /* above the page (canvas 30, pulse 50); below the raised core (70) + orbit (100) */
   pointer-events: none;
-  background: rgba(8, 8, 16, 0);
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  transition: backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease, background 0.35s ease;
+  /* Blur is always applied; we fade the whole layer via opacity (a bulletproof
+     transition) instead of animating backdrop-filter, which is flaky and was
+     getting mangled by the CSS minifier (empty blur(), dropped property). */
+  opacity: 0;
+  background: rgba(8, 8, 16, 0.05);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 0.3s ease;
 }
 .orbit-blur.on {
-  background: rgba(8, 8, 16, 0.05);
-  backdrop-filter: blur(3.5px);
-  -webkit-backdrop-filter: blur(3.5px);
+  opacity: 1;
 }
 .orbit-center {
   position: fixed;
