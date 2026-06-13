@@ -20,6 +20,9 @@ const PulseOverlay = defineAsyncComponent(() => import('@pulse/PulseOverlay.vue'
 
 const { profile, login } = useAuth()
 const showSwitch = ref(false)
+// True while the Nucleus core is spread by hover (emitted by NucleusOrbit) —
+// drives the background blur, which must live inside #app to blur the page.
+const orbitSpread = ref(false)
 const switchPreselect = ref(null)
 
 const { apps, widgets: manifests, loading } = useRegistry()
@@ -175,6 +178,12 @@ function setHubAppsSize(size) {
   <div class="relative min-h-screen bg-slate-100 dark:bg-[#0d0d1a] flex flex-col items-center justify-center p-4 sm:p-8 overflow-hidden">
 
     <BackgroundBlobs />
+
+    <!-- Backdrop blur behind the spread Nucleus core. Lives inside #app (not
+         teleported) so it shares the page's backdrop root and actually blurs
+         the content. z-60: above the page (canvas 30, pulse 50), below the
+         lifted particle logo (70) and the orbit nodes (100). -->
+    <div class="dash-blur" :class="{ on: orbitSpread }" />
 
     <!-- Fixed widget canvas — all freely-positioned elements live here -->
     <div class="fixed inset-0 z-30 pointer-events-none">
@@ -332,7 +341,7 @@ function setHubAppsSize(size) {
          context) so the particle logo can lift itself above the orbit blur
          while the title stays behind it. -->
     <div class="relative flex flex-col items-center gap-4 text-center">
-      <NucleusOrbit :size="logoSize" :dark="isDark" />
+      <NucleusOrbit :size="logoSize" :dark="isDark" @spread="orbitSpread = $event" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>
@@ -515,6 +524,19 @@ function setHubAppsSize(size) {
 </template>
 
 <style scoped>
+.dash-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(8, 8, 16, 0.06);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.3s ease;
+}
+.dash-blur.on { opacity: 1; }
+
 .pulse-fade-enter-active,
 .pulse-fade-leave-active { transition: opacity 0.18s ease; }
 .pulse-fade-enter-from,

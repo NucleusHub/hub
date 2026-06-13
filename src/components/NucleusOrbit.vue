@@ -10,6 +10,7 @@ const props = defineProps({
   size: { type: Number, default: 220 },
   dark: { type: Boolean, default: true },
 })
+const emit = defineEmits(['spread'])
 
 const { pulseActive, isTempHidden } = usePulse()
 const { widgets: dashStates, getWidgetState, setWidgetState, saveState } = useDashboard()
@@ -105,9 +106,11 @@ function saveNode(n) {
 const deploy = ref(0)
 const expanded = computed(() => open.value || pulseActive.value)
 // "Spread" = opened by hover, with system widgets out, but NOT during Pulse
-// editing (where the dashboard must stay readable). Drives the background blur
-// and lifts just the particle logo above it. Disabled on mobile (no nodes).
+// editing (where the dashboard must stay readable). Emitted to HomeView, which
+// renders the background blur (must live inside #app to share its backdrop
+// root) and lifts just the particle logo above it. Disabled on mobile.
 const spread = computed(() => open.value && !pulseActive.value && !isMobile.value)
+watch(spread, (v) => emit('spread', v), { immediate: true })
 const dragging = ref(null)
 
 // ── Proximity: open near the core, stay open near a node (not the app buttons) ─
@@ -246,9 +249,6 @@ function lineStyle(n) {
     <!-- Teleported to body so a high z-index escapes the logo's stacking
          context and floats above the Pulse overlay. Anchored to the core. -->
     <Teleport to="body">
-    <!-- Backdrop blur behind the core + system widgets while spread. Sits below
-         the orbit layer (z 100) and the raised logo (HomeView), above the page. -->
-    <div class="orbit-blur" :class="{ on: spread }" />
     <div class="orbit-center" :style="{ left: cx + 'px', top: cy + 'px' }">
       <div
         v-for="n in activeNodes"
@@ -293,23 +293,6 @@ function lineStyle(n) {
    no ancestor (logo wrapper / #app / page root) creating a stacking context. */
 .orbit-lift {
   z-index: 70;
-}
-.orbit-blur {
-  position: fixed;
-  inset: 0;
-  z-index: 60; /* above the page (canvas 30, pulse 50); below the raised core (70) + orbit (100) */
-  pointer-events: none;
-  /* Blur is always applied; we fade the whole layer via opacity (a bulletproof
-     transition) instead of animating backdrop-filter, which is flaky and was
-     getting mangled by the CSS minifier (empty blur(), dropped property). */
-  opacity: 0;
-  background: rgba(8, 8, 16, 0.18);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: opacity 0.3s ease;
-}
-.orbit-blur.on {
-  opacity: 1;
 }
 .orbit-center {
   position: fixed;
