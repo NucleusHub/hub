@@ -19,5 +19,10 @@ export default defineConfig(({ mode }) => ({
     host: '0.0.0.0',
     port: 5174,
     allowedHosts: ['nucleus.home', 'server.tail874d1f.ts.net'],
+
+    watch: {
+      usePolling: true,
+      interval: 100,
+    },
   },
 }))

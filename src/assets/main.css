@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@source "../**/*.{vue,js}";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 html { background-color: #f1f5f9; }
