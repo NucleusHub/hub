@@ -187,6 +187,14 @@ function setHubAppsSize(size) {
 
     <BackgroundBlobs />
 
+    <!-- Pulse edit dim — sits at z-[5], below every widget (app buttons z-10,
+         canvas z-30) but above the background + logo, so the widgets you're
+         editing stay bright while the page behind them is dimmed. -->
+    <div
+      v-if="pulseActive && !pulseDisabled"
+      class="fixed inset-0 z-[5] bg-black/20 dark:bg-black/35 pointer-events-none transition-opacity"
+    />
+
     <!-- Backdrop blur behind the spread Nucleus core. Lives inside #app (not
          teleported) so it shares the page's backdrop root and actually blurs
          the content. z-60: above the page (canvas 30, pulse 50), below the
@@ -201,6 +209,7 @@ function setHubAppsSize(size) {
         <div
           v-for="w in enabledWidgets"
           :key="w.id"
+          :data-pulse-id="w.id"
           class="pointer-events-auto"
           :style="{
             position: 'absolute',
@@ -215,6 +224,7 @@ function setHubAppsSize(size) {
 
       <!-- ── Account Widget ── -->
       <div v-if="profile && !tempHidden.has('hub-account')"
+        data-pulse-id="hub-account"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
@@ -232,7 +242,7 @@ function setHubAppsSize(size) {
         </button>
 
         <!-- Large: name + recents + manage -->
-        <div v-else class="rounded-[14px] bg-white/20 dark:bg-white/[0.08] backdrop-blur-md border border-white/35 dark:border-white/[0.15] overflow-hidden">
+        <div v-else class="rounded-[14px] bg-white/20 dark:bg-white/[0.08] backdrop-blur-md border border-slate-300/80 dark:border-white/[0.15] overflow-hidden">
           <!-- Current profile -->
           <button @click="showSwitch = true"
             class="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
@@ -274,6 +284,7 @@ function setHubAppsSize(size) {
       <!-- ── Theme Changer ── -->
       <div
         v-if="!tempHidden.has('hub-theme')"
+        data-pulse-id="hub-theme"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
@@ -285,7 +296,7 @@ function setHubAppsSize(size) {
       >
         <div class="w-full h-full rounded-[14px] flex items-center px-[5px] gap-0.5
                     bg-white/20 dark:bg-white/[0.08] backdrop-blur-md
-                    border border-white/35 dark:border-white/[0.15]">
+                    border border-slate-300/80 dark:border-white/[0.15]">
           <!-- Small: icons only -->
           <template v-if="effectiveThemeSize === 'small'">
             <button
@@ -295,7 +306,7 @@ function setHubAppsSize(size) {
               :title="t.label"
               :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-all',
                 theme === t.key
-                  ? 'bg-white/40 dark:bg-white/20 text-slate-800 dark:text-white'
+                  ? 'bg-white shadow-sm dark:bg-white/20 dark:shadow-none text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -312,7 +323,7 @@ function setHubAppsSize(size) {
               :title="t.label"
               :class="['cursor-pointer flex items-center justify-center gap-1.5 px-2.5 h-8 rounded-lg transition-all text-xs font-medium',
                 theme === t.key
-                  ? 'bg-white/40 dark:bg-white/20 text-slate-800 dark:text-white'
+                  ? 'bg-white shadow-sm dark:bg-white/20 dark:shadow-none text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -336,7 +347,7 @@ function setHubAppsSize(size) {
       class="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
       :class="pulseActive
         ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-        : 'bg-black/30 dark:bg-white/8 text-white/50 hover:text-white hover:bg-black/50 backdrop-blur'"
+        : 'bg-slate-900/10 text-slate-500 hover:text-slate-800 hover:bg-slate-900/20 dark:bg-white/8 dark:text-white/50 dark:hover:text-white dark:hover:bg-black/50 backdrop-blur'"
       title="Pulse — edit dashboard"
       @click="togglePulse"
     >
@@ -356,12 +367,13 @@ function setHubAppsSize(size) {
       <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
     </div>
 
-    <!-- App Buttons — page flow, resize-only in Pulse mode -->
+    <!-- App Buttons — page flow, resize-only in Pulse mode. z-10 keeps it above
+         the pulse dim (z-[5]) so it isn't dimmed while editing. -->
     <div class="relative z-10 mt-6" :style="{ width: appsCardW + 'px' }">
       <!-- Pulse size toolbar — absolute so it doesn't shift the cards -->
       <Transition name="pulse-fade">
         <div v-if="pulseActive && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
-          <div class="hub-ctrl-bar">
+          <div class="hub-ctrl-bar" :class="{ 'theme-light': !isDark }">
             <span class="hub-ctrl-label">App Buttons</span>
             <div class="hub-ctrl-divider" />
             <button
@@ -408,7 +420,7 @@ function setHubAppsSize(size) {
           >
             <div
               class="relative overflow-hidden"
-              :class="hubApps.size === 'small' && 'border border-white/35 dark:border-white/[0.15]'"
+              :class="hubApps.size === 'small' && 'border border-slate-300/80 dark:border-white/[0.15]'"
               :style="{ width: gridItemW + 'px', height: gridItemW + 'px', borderRadius: '16px' }"
             >
               <LiquidGlass
@@ -603,5 +615,16 @@ function setHubAppsSize(size) {
   background: rgba(99, 102, 241, 0.5);
   color: #fff;
 }
+
+/* Light mode (theme-light class set from useTheme / !isDark) */
+.hub-ctrl-bar.theme-light {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+.theme-light .hub-ctrl-label { color: rgba(15, 23, 42, 0.5); }
+.theme-light .hub-ctrl-divider { background: rgba(15, 23, 42, 0.12); }
+.theme-light .hub-ctrl-btn { color: rgba(15, 23, 42, 0.5); }
+.theme-light .hub-ctrl-btn:hover { background: rgba(15, 23, 42, 0.08); color: rgba(15, 23, 42, 0.9); }
 
 </style>
