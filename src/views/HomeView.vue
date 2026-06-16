@@ -43,6 +43,15 @@ watch([allManifests, dashboardLoading], ([ms, dl]) => {
 
 onMounted(() => { fetchState(); loadAccountProfiles() })
 
+// Persist a widget's self-managed config (e.g. the Echo widget remembering which
+// chat is open). Debounced so rapid changes coalesce into one save.
+let _widgetConfigTimer = null
+function onWidgetConfig(id, config) {
+  setWidgetState(id, { config })
+  clearTimeout(_widgetConfigTimer)
+  _widgetConfigTimer = setTimeout(saveState, 600)
+}
+
 const dashboardApps = computed(() =>
   apps.value.filter(a => a.hub?.showOnDashboard !== false)
 )
@@ -218,7 +227,7 @@ function setHubAppsSize(size) {
             width: getWidgetWidth(w, w.size) + 'px',
           }"
         >
-          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" :dark="isDark" :config="w.config" />
+          <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" :dark="isDark" :config="w.config" @update:config="onWidgetConfig(w.id, $event)" />
         </div>
       </template>
 
