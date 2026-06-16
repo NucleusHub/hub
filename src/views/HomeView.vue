@@ -1,8 +1,6 @@
 <script setup>
 import { shallowRef, watch, computed, reactive, ref, defineAsyncComponent, onMounted } from 'vue'
 import { APP_NAME } from '@/config.js'
-import logoDark from '@/assets/nucleus-logo-transparent.png'
-import logoLight from '@/assets/nucleus-logo-light-1.png'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
 import { useRegistry } from '@core/useRegistry.js'
 import { useTheme } from '@core/useTheme.js'
@@ -175,7 +173,6 @@ const THEMES = [
 ]
 
 const { theme, isDark, setTheme } = useTheme()
-const logoUrl = computed(() => isDark.value ? logoDark : logoLight)
 
 const logoSize = ref(window.innerWidth < 640 ? 170 : 220)
 const onLogoResize = () => { logoSize.value = window.innerWidth < 640 ? 170 : 220 }
