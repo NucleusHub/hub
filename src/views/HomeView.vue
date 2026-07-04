@@ -4,6 +4,7 @@ import { APP_NAME } from '@/config.js'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
 import { useRegistry } from '@core/useRegistry.js'
 import { useTheme } from '@core/useTheme.js'
+import { useI18n } from '@core/useI18n.js'
 import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
@@ -173,6 +174,7 @@ const THEMES = [
 ]
 
 const { theme, isDark, setTheme } = useTheme()
+const { t } = useI18n()
 
 const logoSize = ref(window.innerWidth < 640 ? 170 : 220)
 const onLogoResize = () => { logoSize.value = window.innerWidth < 640 ? 170 : 220 }
@@ -242,7 +244,7 @@ function setHubAppsSize(size) {
         <button v-if="effectiveAccountSize === 'small'"
           @click="showSwitch = true"
           class="w-10 h-10 rounded-full opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
-          title="Switch account">
+          :title="t('core.sidebar.switchAccount')">
           <AvatarCircle :name="profile.name" :color="profile.color" :emoji="profile.emoji"
             :admin="profile.role === 'admin'" :size="40" />
         </button>
@@ -282,7 +284,7 @@ function setHubAppsSize(size) {
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
             </svg>
-            <span class="text-xs font-medium">Manage profiles</span>
+            <span class="text-xs font-medium">{{ t('hub.account.manageProfiles') }}</span>
           </button>
         </div>
       </div>
@@ -306,36 +308,36 @@ function setHubAppsSize(size) {
           <!-- Small: icons only -->
           <template v-if="effectiveThemeSize === 'small'">
             <button
-              v-for="t in THEMES"
-              :key="t.key"
-              @click="setTheme(t.key)"
-              :title="t.label"
+              v-for="themeOpt in THEMES"
+              :key="themeOpt.key"
+              @click="setTheme(themeOpt.key)"
+              :title="t(`core.theme.${themeOpt.key}`)"
               :class="['cursor-pointer flex items-center justify-center w-8 h-8 rounded-lg transition-all',
-                theme === t.key
+                theme === themeOpt.key
                   ? 'bg-white shadow-sm dark:bg-white/20 dark:shadow-none text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" />
+                <path stroke-linecap="round" stroke-linejoin="round" :d="themeOpt.icon" />
               </svg>
             </button>
           </template>
           <!-- Large: icons + labels -->
           <template v-else>
             <button
-              v-for="t in THEMES"
-              :key="t.key"
-              @click="setTheme(t.key)"
-              :title="t.label"
+              v-for="themeOpt in THEMES"
+              :key="themeOpt.key"
+              @click="setTheme(themeOpt.key)"
+              :title="t(`core.theme.${themeOpt.key}`)"
               :class="['cursor-pointer flex items-center justify-center gap-1.5 px-2.5 h-8 rounded-lg transition-all text-xs font-medium',
-                theme === t.key
+                theme === themeOpt.key
                   ? 'bg-white shadow-sm dark:bg-white/20 dark:shadow-none text-slate-800 dark:text-white'
                   : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-white/20']"
             >
               <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="t.icon" />
+                <path stroke-linecap="round" stroke-linejoin="round" :d="themeOpt.icon" />
               </svg>
-              {{ t.label }}
+              {{ t(`core.theme.${themeOpt.key}`) }}
             </button>
           </template>
         </div>
@@ -354,7 +356,7 @@ function setHubAppsSize(size) {
       :class="pulseActive
         ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
         : 'bg-slate-900/10 text-slate-500 hover:text-slate-800 hover:bg-slate-900/20 dark:bg-white/8 dark:text-white/50 dark:hover:text-white dark:hover:bg-black/50 backdrop-blur'"
-      title="Pulse — edit dashboard"
+      :title="t('hub.pulse.editDashboard')"
       @click="togglePulse"
     >
       <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -370,7 +372,7 @@ function setHubAppsSize(size) {
     <div class="relative flex flex-col items-center gap-4 text-center">
       <NucleusOrbit :size="logoSize" :dark="isDark" @spread="orbitSpread = $event" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm">Your personal productivity hub</p>
+      <p class="text-slate-500 dark:text-slate-400 text-sm">{{ t('hub.tagline') }}</p>
     </div>
 
     <!-- App Buttons — page flow, resize-only in Pulse mode. z-10 keeps it above
@@ -380,7 +382,7 @@ function setHubAppsSize(size) {
       <Transition name="pulse-fade">
         <div v-if="pulseActive && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
           <div class="hub-ctrl-bar" :class="{ 'theme-light': !isDark }">
-            <span class="hub-ctrl-label">App Buttons</span>
+            <span class="hub-ctrl-label">{{ t('hub.controls.appButtons') }}</span>
             <div class="hub-ctrl-divider" />
             <button
               v-for="s in hubAppsSizes"
