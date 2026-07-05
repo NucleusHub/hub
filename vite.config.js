@@ -22,7 +22,25 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-  build: { cssMinify: 'lightningcss' },
+  build: {
+    cssMinify: 'lightningcss',
+    // three.js (~500kB, pulled in by the particle logo) is the one genuinely
+    // large dep and changes rarely; nudge the size warning above it so a clean
+    // build isn't noisy about an intentional vendor chunk.
+    chunkSizeWarningLimit: 600,
+    rolldownOptions: {
+      output: {
+        // Give three.js its own chunk so it caches independently of hub app
+        // code instead of bloating (and invalidating) the main bundle on every
+        // edit. Drops index from ~634kB to ~133kB.
+        codeSplitting: {
+          groups: [
+            { name: 'three', test: /[\\/]node_modules[\\/]three[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   resolve: {
     preserveSymlinks: true,
     alias: {
