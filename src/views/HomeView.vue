@@ -94,7 +94,8 @@ const effectiveAccountPos  = computed(() =>
 // Profiles loaded for the large account widget
 const accountProfiles = ref([])
 async function loadAccountProfiles() {
-  const res = await fetch('/api/auth/profiles', { credentials: 'include' })
+  // picker=1: account switcher widget — guests may see the list here.
+  const res = await fetch('/api/auth/profiles?picker=1', { credentials: 'include' })
   accountProfiles.value = res.ok ? await res.json() : []
 }
 
