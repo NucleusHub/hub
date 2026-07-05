@@ -559,7 +559,6 @@ function setHubAppsSize(size) {
   opacity: 0;
   background: rgba(8, 8, 16, 0.06);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   transition: opacity 0.3s ease;
 }
 .dash-blur.on { opacity: 1; }
@@ -576,7 +575,6 @@ function setHubAppsSize(size) {
   padding: 4px 6px;
   background: rgba(10, 10, 22, 0.88);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.25);
