@@ -246,8 +246,7 @@ function setHubAppsSize(size) {
           @click="showSwitch = true"
           class="w-10 h-10 rounded-full opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
           :title="t('core.sidebar.switchAccount')">
-          <AvatarCircle :name="profile.name" :color="profile.color" :emoji="profile.emoji"
-            :admin="profile.role === 'admin'" :size="40" />
+          <AvatarCircle :profile="profile" :size="40" />
         </button>
 
         <!-- Large: name + recents + manage -->
@@ -255,8 +254,7 @@ function setHubAppsSize(size) {
           <!-- Current profile -->
           <button @click="showSwitch = true"
             class="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
-            <AvatarCircle :name="profile.name" :color="profile.color" :emoji="profile.emoji"
-              :admin="profile.role === 'admin'" :size="32" />
+            <AvatarCircle :profile="profile" :size="32" />
             <span class="text-sm font-semibold text-slate-800 dark:text-white flex-1 text-left truncate">{{ profile.name }}</span>
             <svg class="w-3.5 h-3.5 text-slate-400 dark:text-white/40 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -269,8 +267,7 @@ function setHubAppsSize(size) {
             <button v-for="p in recentProfiles" :key="p._id"
               @click="switchToProfile(p)"
               class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
-              <AvatarCircle :name="p.name" :color="p.color" :emoji="p.emoji"
-                :admin="p.role === 'admin'" :size="26" />
+              <AvatarCircle :profile="p" :size="26" />
               <span class="text-xs font-medium text-slate-700 dark:text-white/75 flex-1 text-left truncate">{{ p.name }}</span>
               <svg v-if="p.hasPin" class="w-2.5 h-2.5 text-violet-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V6a3 3 0 0 0-3-3z"/>
