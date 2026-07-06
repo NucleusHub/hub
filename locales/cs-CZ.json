@@ -2,5 +2,46 @@
   "hub.tagline": "Vaše osobní centrum produktivity",
   "hub.account.manageProfiles": "Spravovat profily",
   "hub.pulse.editDashboard": "Pulse — upravit nástěnku",
-  "hub.controls.appButtons": "Tlačítka aplikací"
+  "hub.controls.appButtons": "Tlačítka aplikací",
+
+  "hub.pulse.editingDashboard": "Úprava nástěnky",
+  "hub.pulse.showSidebar": "Zobrazit panel",
+  "hub.pulse.hideSidebar": "Skrýt panel",
+  "hub.pulse.desktopOnly": "Pouze na počítači",
+  "hub.pulse.desktopOnlyBody": "Úprava nástěnky je dostupná jen na počítači nebo tabletu.",
+
+  "hub.pulse.closePulse": "Zavřít Pulse",
+  "hub.pulse.dragHint": "Přetažením widgety přemístíte.",
+  "hub.pulse.installedWidgets": "Nainstalované widgety",
+  "hub.pulse.hiddenThisSession": "Dočasně skryto",
+  "hub.pulse.showWidget": "Zobrazit widget",
+  "hub.pulse.hideThisSession": "Dočasně skrýt",
+  "hub.pulse.disable": "Vypnout",
+  "hub.pulse.enable": "Zapnout",
+  "hub.pulse.noInstalled": "Žádné nainstalované widgety.",
+  "hub.pulse.noEnabled": "Žádné zapnuté widgety.",
+  "hub.pulse.disabledSection": "Vypnuté",
+  "hub.pulse.systemSection": "Systémové",
+  "hub.pulse.required": "Povinné",
+  "hub.pulse.noSystem": "Žádné systémové widgety.",
+
+  "hub.pulse.unlockToMove": "Odemkněte pro přesun",
+  "hub.pulse.dragToMove": "Přetažením přesunete",
+  "hub.pulse.dragToReposition": "Přetažením přemístíte",
+  "hub.pulse.unlockPosition": "Odemknout pozici",
+  "hub.pulse.lockPosition": "Zamknout pozici",
+  "hub.pulse.configure": "Nastavit",
+  "hub.pulse.hideForNow": "Prozatím skrýt",
+  "hub.pulse.sizeSmall": "Malý",
+  "hub.pulse.sizeMedium": "Střední",
+  "hub.pulse.sizeLarge": "Velký",
+
+  "hub.pulse.addWidget": "Přidat widget",
+  "hub.pulse.autoDiscovered": "Widgety se automaticky zjišťují z nainstalovaných balíčků.",
+  "hub.pulse.add": "Přidat",
+  "hub.pulse.active": "Aktivní",
+  "hub.pulse.noAdditional": "Žádné další widgety nejsou k dispozici.",
+
+  "hub.pulse.widget.account": "Účet",
+  "hub.pulse.widget.theme": "Změna motivu"
 }

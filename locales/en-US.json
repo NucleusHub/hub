@@ -2,5 +2,46 @@
   "hub.tagline": "Your personal productivity hub",
   "hub.account.manageProfiles": "Manage profiles",
   "hub.pulse.editDashboard": "Pulse — edit dashboard",
-  "hub.controls.appButtons": "App Buttons"
+  "hub.controls.appButtons": "App Buttons",
+
+  "hub.pulse.editingDashboard": "Editing dashboard",
+  "hub.pulse.showSidebar": "Show sidebar",
+  "hub.pulse.hideSidebar": "Hide sidebar",
+  "hub.pulse.desktopOnly": "Desktop only",
+  "hub.pulse.desktopOnlyBody": "Dashboard editing is only available on desktop or tablet.",
+
+  "hub.pulse.closePulse": "Close Pulse",
+  "hub.pulse.dragHint": "Drag widgets to reposition.",
+  "hub.pulse.installedWidgets": "Installed Widgets",
+  "hub.pulse.hiddenThisSession": "Hidden this session",
+  "hub.pulse.showWidget": "Show widget",
+  "hub.pulse.hideThisSession": "Hide for this session",
+  "hub.pulse.disable": "Disable",
+  "hub.pulse.enable": "Enable",
+  "hub.pulse.noInstalled": "No widgets installed.",
+  "hub.pulse.noEnabled": "No widgets enabled.",
+  "hub.pulse.disabledSection": "Disabled",
+  "hub.pulse.systemSection": "System",
+  "hub.pulse.required": "Required",
+  "hub.pulse.noSystem": "No system widgets.",
+
+  "hub.pulse.unlockToMove": "Unlock to move",
+  "hub.pulse.dragToMove": "Drag to move",
+  "hub.pulse.dragToReposition": "Drag to reposition",
+  "hub.pulse.unlockPosition": "Unlock position",
+  "hub.pulse.lockPosition": "Lock position",
+  "hub.pulse.configure": "Configure",
+  "hub.pulse.hideForNow": "Hide for now",
+  "hub.pulse.sizeSmall": "Small",
+  "hub.pulse.sizeMedium": "Medium",
+  "hub.pulse.sizeLarge": "Large",
+
+  "hub.pulse.addWidget": "Add Widget",
+  "hub.pulse.autoDiscovered": "Widgets are auto-discovered from installed packages.",
+  "hub.pulse.add": "Add",
+  "hub.pulse.active": "Active",
+  "hub.pulse.noAdditional": "No additional widgets available.",
+
+  "hub.pulse.widget.account": "Account",
+  "hub.pulse.widget.theme": "Theme Changer"
 }
