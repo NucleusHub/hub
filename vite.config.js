@@ -46,7 +46,9 @@ export default defineConfig(({ mode }) => ({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@core': fileURLToPath(new URL('./core', import.meta.url)),
-      '@widgets-core': fileURLToPath(new URL('../widgets/core', import.meta.url)),
+      // Via the ./widgets symlink (→ repo /widgets) so it resolves both locally
+      // and in the container, where widgets is mounted at /app/widgets.
+      '@widgets-core': fileURLToPath(new URL('./widgets/core', import.meta.url)),
       '@pulse': fileURLToPath(new URL('./pulse', import.meta.url)),
     },
   },
