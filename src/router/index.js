@@ -5,6 +5,5 @@ export default createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: HomeView },
-    { path: '/graphics', component: () => import('@/views/GraphicsView.vue') },
   ],
 })
