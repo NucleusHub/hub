@@ -177,6 +177,25 @@ const THEMES = [
 const { theme, isDark, setTheme } = useTheme()
 const { t } = useI18n()
 
+// A quiet, time-aware welcome above the tagline — personalized with the current
+// profile once it loads. Localized via the shared core.greeting.* keys, so it
+// reads the same in every language. Computed once per visit (the page reloads on
+// navigation, so no live clock is needed).
+const greetingSlot = (() => {
+  const h = new Date().getHours()
+  if (h < 5) return 'night'
+  if (h < 12) return 'morning'
+  if (h < 17) return 'afternoon'
+  if (h < 22) return 'evening'
+  return 'night'
+})()
+const greeting = computed(() => {
+  const name = profile.value?.name
+  return name
+    ? t(`core.greeting.${greetingSlot}Named`, { name })
+    : t(`core.greeting.${greetingSlot}`)
+})
+
 const logoSize = ref(window.innerWidth < 640 ? 170 : 220)
 const onLogoResize = () => { logoSize.value = window.innerWidth < 640 ? 170 : 220 }
 onMounted(() => window.addEventListener('resize', onLogoResize))
@@ -371,6 +390,7 @@ function setHubAppsSize(size) {
       <NucleusOrbit :size="logoSize" :dark="isDark" @spread="orbitSpread = $event" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
       <p class="text-slate-500 dark:text-slate-400 text-sm">{{ t('hub.tagline') }}</p>
+      <p v-if="greeting" class="hub-greeting nuc-in-fade text-sm font-semibold">{{ greeting }}</p>
     </div>
 
     <!-- App Buttons — page flow, resize-only in Pulse mode. z-10 keeps it above
@@ -540,6 +560,25 @@ function setHubAppsSize(size) {
 </template>
 
 <style scoped>
+/* Time-of-day greeting — a soft indigo→violet gradient wordmark that gently
+   drifts, so it feels alive without pulling focus from the logo. */
+.hub-greeting {
+  margin-top: -4px;
+  background: linear-gradient(100deg, #6366f1, #a78bfa 45%, #818cf8 70%, #6366f1);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hub-greeting-shift 9s ease-in-out infinite;
+}
+@keyframes hub-greeting-shift {
+  0%, 100% { background-position: 0% center; }
+  50%      { background-position: 100% center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-greeting { animation: none; }
+}
+
 .dash-blur {
   position: fixed;
   inset: 0;
