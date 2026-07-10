@@ -374,8 +374,9 @@ function setHubAppsSize(size) {
     </div>
 
     <!-- App Buttons — page flow, resize-only in Pulse mode. z-10 keeps it above
-         the pulse dim (z-[5]) so it isn't dimmed while editing. -->
-    <div class="relative z-10 mt-6" :style="{ width: appsCardW + 'px' }">
+         the pulse dim (z-[5]) so it isn't dimmed while editing. Opacity-only
+         fade-in (no transform) so the per-card hover lifts stay intact. -->
+    <div class="relative z-10 mt-6 nuc-in-fade" :style="{ width: appsCardW + 'px' }">
       <!-- Pulse size toolbar — absolute so it doesn't shift the cards -->
       <Transition name="pulse-fade">
         <div v-if="pulseActive && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
