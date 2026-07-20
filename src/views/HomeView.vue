@@ -15,6 +15,10 @@ import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
 import { usePulse } from '@pulse/composables/usePulse.js'
 import { useDashboard, HUB_MANIFESTS, getWidgetWidth } from '@pulse/composables/useDashboard.js'
+import { Icon } from '@core/icons'
+import LockIcon from '@/assets/icons/lock.svg?component'
+import UserGroupIcon from '@/assets/icons/user-group.svg?component'
+import Squares2x2Icon from '@/assets/icons/squares-2x2.svg?component'
 
 const PulseOverlay = defineAsyncComponent(() => import('@pulse/PulseOverlay.vue'))
 
@@ -275,9 +279,7 @@ function setHubAppsSize(size) {
             class="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
             <AvatarCircle :profile="profile" :size="32" />
             <span class="text-sm font-semibold text-slate-800 dark:text-white flex-1 text-left truncate">{{ profile.name }}</span>
-            <svg class="w-3.5 h-3.5 text-slate-400 dark:text-white/40 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
+            <Icon name="chevronRight" class="w-3.5 h-3.5 text-slate-400 dark:text-white/40 shrink-0" :sw="2.5" />
           </button>
 
           <!-- Recent profiles -->
@@ -288,9 +290,7 @@ function setHubAppsSize(size) {
               class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
               <AvatarCircle :profile="p" :size="26" />
               <span class="text-xs font-medium text-slate-700 dark:text-white/75 flex-1 text-left truncate">{{ p.name }}</span>
-              <svg v-if="p.hasPin" class="w-2.5 h-2.5 text-violet-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 1a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V6a3 3 0 0 0-3-3z"/>
-              </svg>
+              <LockIcon v-if="p.hasPin" class="w-2.5 h-2.5 text-violet-400 shrink-0" />
             </button>
           </template>
 
@@ -298,9 +298,7 @@ function setHubAppsSize(size) {
           <!-- Manage profiles -->
           <button @click="showSwitch = true"
             class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white">
-            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
-            </svg>
+            <UserGroupIcon class="w-3.5 h-3.5 shrink-0" />
             <span class="text-xs font-medium">{{ t('hub.account.manageProfiles') }}</span>
           </button>
         </div>
@@ -376,11 +374,7 @@ function setHubAppsSize(size) {
       :title="t('hub.pulse.editDashboard')"
       @click="togglePulse"
     >
-      <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round"
-          d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"
-        />
-      </svg>
+      <Squares2x2Icon width="17" height="17" />
     </button>
 
     <!-- Logo + title — centered in page flow. No z-index here (no stacking
@@ -533,14 +527,7 @@ function setHubAppsSize(size) {
                   <p class="text-xs text-slate-500 dark:text-white/60 mt-0.5">{{ item.description }}</p>
                 </div>
               </div>
-              <svg
-                class="w-4 h-4 shrink-0"
-                :style="{ color: hovered[item.id] ? 'rgba(99,102,241,0.8)' : '', transition: 'color 0.25s ease' }"
-                :class="hovered[item.id] ? '' : 'text-slate-400 dark:text-white/40'"
-                fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
+              <Icon name="chevronRight" class="w-4 h-4 shrink-0" :style="{ color: hovered[item.id] ? 'rgba(99,102,241,0.8)' : '', transition: 'color 0.25s ease' }" :class="hovered[item.id] ? '' : 'text-slate-400 dark:text-white/40'" :sw="2.5" />
             </div>
           </LiquidGlass>
         </a>
