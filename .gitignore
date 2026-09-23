@@ -21,7 +21,6 @@ yarn-error.log*
 pnpm-debug.log*
 
 # OS
-.DS_Store
 Thumbs.db
 
 # IDE
@@ -49,3 +48,22 @@ src/views/Cards/*
 
 # Hub libraries — links to apps/<id>/client, managed by infra/tool
 libs/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
