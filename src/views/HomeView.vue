@@ -1,5 +1,5 @@
 <script setup>
-import { shallowRef, watch, computed, reactive, ref, defineAsyncComponent, onMounted } from 'vue'
+import { shallowRef, watch, computed, reactive, ref, onMounted } from 'vue'
 import { APP_NAME } from '@/config.js'
 import { LiquidGlass } from '@zaosoula/liquid-glass-vue/components'
 import { useRegistry } from '@core/useRegistry.js'
@@ -9,18 +9,15 @@ import { useAuth, getRecentProfileIds } from '@core/auth/useAuth.js'
 import { resolveWidget } from '@/composables/useWidgets.js'
 import BackgroundBlobs from '@core/BackgroundBlobs.vue'
 import NucleusOrbit from '@/components/NucleusOrbit.vue'
-import WidgetConfigModal from '@/components/WidgetConfigModal.vue'
 import AppIcon from '@core/AppIcon.vue'
 import AvatarCircle from '@core/auth/AvatarCircle.vue'
 import ProfileSelector from '@core/auth/ProfileSelector.vue'
-import { usePulse } from '@pulse/composables/usePulse.js'
-import { useDashboard, HUB_MANIFESTS, getWidgetWidth } from '@pulse/composables/useDashboard.js'
+import { useDashboardProvider } from '@/composables/useDashboardProvider.js'
+import { HUB_MANIFESTS, hubManifest } from '@/hubManifests.js'
 import { Icon } from '@core/icons'
 import LockIcon from '@/assets/icons/lock.svg?component'
 import UserGroupIcon from '@/assets/icons/user-group.svg?component'
 import Squares2x2Icon from '@/assets/icons/squares-2x2.svg?component'
-
-const PulseOverlay = defineAsyncComponent(() => import('@pulse/PulseOverlay.vue'))
 
 const { profile, login } = useAuth()
 const showSwitch = ref(false)
@@ -29,15 +26,21 @@ const showSwitch = ref(false)
 const orbitSpread = ref(false)
 const switchPreselect = ref(null)
 
-const { apps, widgets: manifests, disabledAppIds, loading } = useRegistry()
-// Pulse is the widget launcher/manager. Disabling it globally turns off the
-// whole widget system (button, overlay, dashboard + orbit widgets); only the
-// core hub UI (app buttons, account, theme) remains.
-const pulseDisabled = computed(() => disabledAppIds.value.has('pulse'))
-const { pulseActive, togglePulse, tempHidden } = usePulse()
-const { widgets: states, loading: dashboardLoading, fetchState, ensureWidgets, getWidgetState, setWidgetState, saveState } = useDashboard()
+const { apps, widgets: manifests, loading } = useRegistry()
+// The widget dashboard is optional — owned by an installed dashboard provider
+// (Pulse). Without one, or with it disabled, the whole widget system (button,
+// overlay, dashboard + orbit widgets) is off and only the core hub UI (app
+// buttons, account, theme) remains. See useDashboardProvider.js.
+const {
+  enabled: dashboardEnabled,
+  editor: { active: editing, toggle: toggleEditing, tempHidden },
+  dashboard: { widgets: states, loading: dashboardLoading, fetchState, ensureWidgets, getWidgetState, setWidgetState, saveState },
+  widgetWidth,
+  Overlay: DashboardOverlay,
+  ConfigModal: WidgetConfigModal,
+} = useDashboardProvider()
 
-// All manifests passed to Pulse: registry widgets + hub pseudo-widgets
+// All manifests passed to the provider: registry widgets + hub pseudo-widgets
 const allManifests = computed(() => [...manifests.value, ...HUB_MANIFESTS])
 
 watch([allManifests, dashboardLoading], ([ms, dl]) => {
@@ -70,11 +73,11 @@ const widgetData = computed(() => {
   })
 })
 
-// Temp-hidden widgets vanish from the canvas while Pulse is open; the set is
-// cleared on close, so they reappear the moment edit mode ends. When Pulse is
-// globally disabled, no dashboard widgets render at all.
+// Temp-hidden widgets vanish from the canvas while editing; the set is cleared
+// on close, so they reappear the moment edit mode ends. Without an enabled
+// dashboard provider, no dashboard widgets render at all.
 const enabledWidgets = computed(() =>
-  pulseDisabled.value ? [] : widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id))
+  !dashboardEnabled.value ? [] : widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id))
 )
 
 // Hub UI states — with sensible viewport-relative defaults before DB loads
@@ -148,7 +151,7 @@ const themeDims    = computed(() => THEME_DIMS[effectiveThemeSize.value] ?? THEM
 const appsDims     = computed(() => APPS_DIMS[hubApps.value.size]   ?? APPS_DIMS.large)
 // Clamp card width to viewport with some breathing room
 const appsCardW    = computed(() => {
-  const raw = HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizeDims[hubApps.value.size] ?? 420
+  const raw = hubManifest('hub-apps').sizeDims[hubApps.value.size] ?? 420
   return Math.min(raw, vw.value - 32)
 })
 // Grid layout computeds (used for small/medium — individual glass card per app)
@@ -204,7 +207,7 @@ const logoSize = ref(window.innerWidth < 640 ? 170 : 220)
 const onLogoResize = () => { logoSize.value = window.innerWidth < 640 ? 170 : 220 }
 onMounted(() => window.addEventListener('resize', onLogoResize))
 
-const hubAppsSizes = HUB_MANIFESTS.find(m => m.id === 'hub-apps').sizes
+const hubAppsSizes = hubManifest('hub-apps').sizes
 
 function setHubAppsSize(size) {
   const ws = getWidgetState('hub-apps')
@@ -219,11 +222,11 @@ function setHubAppsSize(size) {
 
     <BackgroundBlobs />
 
-    <!-- Pulse edit dim — sits at z-[5], below every widget (app buttons z-10,
+    <!-- Dashboard edit dim — sits at z-[5], below every widget (app buttons z-10,
          canvas z-30) but above the background + logo, so the widgets you're
          editing stay bright while the page behind them is dimmed. -->
     <div
-      v-if="pulseActive && !pulseDisabled"
+      v-if="editing && dashboardEnabled"
       class="fixed inset-0 z-[5] bg-black/20 dark:bg-black/35 pointer-events-none transition-opacity"
     />
 
@@ -241,13 +244,13 @@ function setHubAppsSize(size) {
         <div
           v-for="w in enabledWidgets"
           :key="w.id"
-          :data-pulse-id="w.id"
+          :data-widget-id="w.id"
           class="pointer-events-auto"
           :style="{
             position: 'absolute',
             left:  w.position.x + 'px',
             top:   w.position.y + 'px',
-            width: getWidgetWidth(w, w.size) + 'px',
+            width: widgetWidth(w, w.size) + 'px',
           }"
         >
           <component :is="resolveWidget(w.id)" v-if="resolveWidget(w.id)" :size="w.size" :dark="isDark" :config="w.config" @update:config="onWidgetConfig(w.id, $event)" />
@@ -256,7 +259,7 @@ function setHubAppsSize(size) {
 
       <!-- ── Account Widget ── -->
       <div v-if="profile && !tempHidden.has('hub-account')"
-        data-pulse-id="hub-account"
+        data-widget-id="hub-account"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
@@ -307,7 +310,7 @@ function setHubAppsSize(size) {
       <!-- ── Theme Changer ── -->
       <div
         v-if="!tempHidden.has('hub-theme')"
-        data-pulse-id="hub-theme"
+        data-widget-id="hub-theme"
         class="pointer-events-auto"
         :style="{
           position: 'absolute',
@@ -363,16 +366,16 @@ function setHubAppsSize(size) {
     <ProfileSelector v-if="showSwitch" :closeable="true" :preselected-id="switchPreselect"
       @close="showSwitch = false; switchPreselect = null" />
 
-    <!-- Pulse toggle — always fixed, outside the movable canvas. Hidden when
-         Pulse is globally disabled. -->
+    <!-- Dashboard edit toggle — always fixed, outside the movable canvas.
+         Hidden without an enabled dashboard provider. -->
     <button
-      v-if="!pulseDisabled"
+      v-if="dashboardEnabled"
       class="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
-      :class="pulseActive
+      :class="editing
         ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
         : 'bg-slate-900/10 text-slate-500 hover:text-slate-800 hover:bg-slate-900/20 dark:bg-white/8 dark:text-white/50 dark:hover:text-white dark:hover:bg-black/50 backdrop-blur'"
       :title="t('hub.pulse.editDashboard')"
-      @click="togglePulse"
+      @click="toggleEditing"
     >
       <Squares2x2Icon width="17" height="17" />
     </button>
@@ -392,8 +395,8 @@ function setHubAppsSize(size) {
          fade-in (no transform) so the per-card hover lifts stay intact. -->
     <div class="relative z-10 mt-6 nuc-in-fade" :style="{ width: appsCardW + 'px' }">
       <!-- Pulse size toolbar — absolute so it doesn't shift the cards -->
-      <Transition name="pulse-fade">
-        <div v-if="pulseActive && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
+      <Transition name="dash-fade">
+        <div v-if="editing && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
           <div class="hub-ctrl-bar" :class="{ 'theme-light': !isDark }">
             <span class="hub-ctrl-label">{{ t('hub.controls.appButtons') }}</span>
             <div class="hub-ctrl-divider" />
@@ -534,15 +537,15 @@ function setHubAppsSize(size) {
       </div>
     </div>
 
-    <!-- Pulse overlay -->
-    <Teleport to="body">
-      <Transition name="pulse-fade">
-        <PulseOverlay v-if="pulseActive && !pulseDisabled" :manifests="allManifests" />
+    <!-- Dashboard edit overlay (provided by the dashboard provider) -->
+    <Teleport v-if="DashboardOverlay" to="body">
+      <Transition name="dash-fade">
+        <DashboardOverlay v-if="editing && dashboardEnabled" :manifests="allManifests" />
       </Transition>
     </Teleport>
 
-    <!-- Widget settings modal (opened from a widget's Pulse gear button) -->
-    <WidgetConfigModal />
+    <!-- Widget settings modal (opened from a widget's edit-mode gear button) -->
+    <component :is="WidgetConfigModal" v-if="WidgetConfigModal" />
   </div>
 </template>
 
@@ -578,10 +581,10 @@ function setHubAppsSize(size) {
 }
 .dash-blur.on { opacity: 1; }
 
-.pulse-fade-enter-active,
-.pulse-fade-leave-active { transition: opacity 0.18s ease; }
-.pulse-fade-enter-from,
-.pulse-fade-leave-to     { opacity: 0; }
+.dash-fade-enter-active,
+.dash-fade-leave-active { transition: opacity 0.18s ease; }
+.dash-fade-enter-from,
+.dash-fade-leave-to     { opacity: 0; }
 
 .hub-ctrl-bar {
   display: inline-flex;

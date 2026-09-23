@@ -46,3 +46,6 @@ tmp/
 src/views/GraphicsView.vue
 public/graphics.png
 src/views/Cards/*
+
+# Hub libraries — links to apps/<id>/client, managed by infra/tool
+libs/

@@ -2,10 +2,8 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import ParticleLogo from './ParticleLogo.vue'
 import { resolveWidget } from '@/composables/useWidgets.js'
-import { usePulse } from '@pulse/composables/usePulse.js'
-import { useDashboard } from '@pulse/composables/useDashboard.js'
+import { useDashboardProvider } from '@/composables/useDashboardProvider.js'
 import { useRegistry } from '@core/useRegistry.js'
-import PulseWidgetControls from '@pulse/components/PulseWidgetControls.vue'
 
 const props = defineProps({
   size: { type: Number, default: 220 },
@@ -13,11 +11,15 @@ const props = defineProps({
 })
 const emit = defineEmits(['spread'])
 
-const { pulseActive, isTempHidden } = usePulse()
-const { disabledWidgetIds, disabledAppIds } = useRegistry()
-// Pulse disabled globally → no system widgets at all.
-const pulseDisabled = computed(() => disabledAppIds.value.has('pulse'))
-const { widgets: dashStates, getWidgetState, setWidgetState, saveState } = useDashboard()
+// Orbit nodes are part of the optional widget dashboard: no enabled dashboard
+// provider (Pulse) → no system widgets at all, just the particle logo.
+const {
+  enabled: dashboardEnabled,
+  editor: { active: editing, isTempHidden },
+  dashboard: { widgets: dashStates, getWidgetState, setWidgetState, saveState },
+  WidgetControls,
+} = useDashboardProvider()
+const { widgets: manifests, disabledWidgetIds } = useRegistry()
 
 // A node is pinned when its (per-user) dashboard state has locked = true.
 function lockedOf(id) {
@@ -32,14 +34,6 @@ const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : f
 const cx = ref(0)
 const cy = ref(0)
 
-// Initial node placement: evenly around the core (four diagonals) so the
-// force layout starts at equilibrium. Angles in degrees (0 = right, +clockwise).
-const SLOTS = [
-  { id: 'sys-load', name: 'System Load', angle: -135 },
-  { id: 'sys-disk', name: 'Storage', angle: -45 },
-  { id: 'sys-temp', name: 'Temperatures', angle: 135 },
-  { id: 'sys-net', name: 'Network', angle: 45 },
-]
 
 // ── Force-layout state (positions are offsets from the core centre) ──────────
 const REST = 250   // tether rest length (edge length to the core)
@@ -48,26 +42,39 @@ const TETHER = 0.05
 const REPEL = 0.55
 const DECAY = 0.76 // velocity decay per frame
 
-const nodes = reactive(
-  SLOTS.map((s, i) => {
-    const rad = (s.angle * Math.PI) / 180
-    return {
-      id: s.id,
-      name: s.name,
-      comp: resolveWidget(s.id),
-      x: Math.cos(rad) * REST,
-      y: Math.sin(rad) * REST,
-      vx: 0,
-      vy: 0,
-      floatDur: (8 + i * 1.7).toFixed(2),
-      floatDelay: (i * -2.6).toFixed(2),
-    }
-  })
+// Nodes are the installed widgets that declare `"slot": "nucleus"` and ship a
+// Widget.vue — nothing is hard-coded, so a setup without those widgets simply
+// has no orbit. Initial placement: evenly around the core (starting top-left,
+// clockwise) so the force layout starts at equilibrium; a manifest may pin its
+// start with `orbitAngle` (degrees, 0 = right, +clockwise).
+const nodes = reactive([])
+watch(
+  manifests,
+  (list) => {
+    const orbit = list.filter((m) => m.slot === 'nucleus' && resolveWidget(m.id))
+    orbit.forEach((m, i) => {
+      if (nodes.some((n) => n.id === m.id)) return
+      const angle = typeof m.orbitAngle === 'number' ? m.orbitAngle : -135 + (360 / orbit.length) * i
+      const rad = (angle * Math.PI) / 180
+      nodes.push({
+        id: m.id,
+        name: m.name,
+        comp: resolveWidget(m.id),
+        x: Math.cos(rad) * REST,
+        y: Math.sin(rad) * REST,
+        vx: 0,
+        vy: 0,
+        floatDur: (8 + i * 1.7).toFixed(2),
+        floatDelay: (i * -2.6).toFixed(2),
+      })
+    })
+  },
+  { immediate: true }
 )
 
-// Only nodes Pulse has left enabled (defaults to on). Hidden entirely on mobile.
+// Only nodes the dashboard has left enabled (defaults to on). Hidden entirely on mobile.
 const activeNodes = computed(() => {
-  if (isMobile.value || pulseDisabled.value) return []
+  if (isMobile.value || !dashboardEnabled.value) return []
   return nodes.filter((n) => {
     // Globally disabled by an admin (incl. cascade from disabling System Info).
     if (disabledWidgetIds.value.has(n.id)) return false
@@ -77,11 +84,12 @@ const activeNodes = computed(() => {
   })
 })
 
-// Restore saved positions once the (per-user) dashboard state loads.
+// Restore saved positions once the (per-user) dashboard state loads — and for
+// nodes that appear after it did (the registry may resolve later).
 const restored = new Set()
 watch(
-  dashStates,
-  (list) => {
+  [dashStates, () => nodes.length],
+  ([list]) => {
     for (const n of nodes) {
       if (restored.has(n.id)) continue
       const st = list.find((w) => w.id === n.id)
@@ -110,12 +118,12 @@ function saveNode(n) {
 
 // Deploy: 0 = collapsed into the core, 1 = flown out to node positions.
 const deploy = ref(0)
-const expanded = computed(() => open.value || pulseActive.value)
-// "Spread" = opened by hover, with system widgets out, but NOT during Pulse
+const expanded = computed(() => open.value || editing.value)
+// "Spread" = opened by hover, with system widgets out, but NOT during dashboard
 // editing (where the dashboard must stay readable). Emitted to HomeView, which
 // renders the background blur (must live inside #app to share its backdrop
 // root) and lifts just the particle logo above it. Disabled on mobile.
-const spread = computed(() => open.value && !pulseActive.value && !isMobile.value && !pulseDisabled.value)
+const spread = computed(() => open.value && !editing.value && !isMobile.value && dashboardEnabled.value)
 watch(spread, (v) => emit('spread', v), { immediate: true })
 const dragging = ref(null)
 
@@ -276,9 +284,10 @@ function lineStyle(n) {
           <component :is="n.comp" v-if="n.comp" size="small" :dark="dark" />
         </div>
 
-        <!-- Pulse editing: same toolbar as other widgets, with a move handle. -->
-        <div v-if="pulseActive" class="orbit-tool">
-          <PulseWidgetControls
+        <!-- Dashboard editing: same toolbar as other widgets, with a move handle. -->
+        <div v-if="editing && WidgetControls" class="orbit-tool">
+          <component
+            :is="WidgetControls"
             :widget="{ id: n.id, name: n.name, slot: 'nucleus', locked: lockedOf(n.id) }"
             @movestart="startDrag(n, $event)"
           />

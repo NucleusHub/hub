@@ -54,9 +54,12 @@ export default defineConfig(({ mode }) => ({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@core': fileURLToPath(new URL('./core', import.meta.url)),
       // Via the ./widgets symlink (→ repo /widgets) so it resolves both locally
-      // and in the container, where widgets is mounted at /app/widgets.
+      // and in the container, where widgets is mounted at /app/widgets. The
+      // widget package is optional: it's only ever reached through
+      // import.meta.glob, so the hub builds without it. Hub libraries (apps
+      // linked at ./libs/<id>) are likewise discovered by glob — see
+      // src/composables/useDashboardProvider.js.
       '@widgets-core': fileURLToPath(new URL('./widgets/core', import.meta.url)),
-      '@pulse': fileURLToPath(new URL('./pulse', import.meta.url)),
     },
   },
   server: {

@@ -1,7 +1,8 @@
 import { defineAsyncComponent } from 'vue'
 
 // Resolved at build time — Vite discovers all Widget.vue files automatically.
-// Adding a new widget package automatically includes it here.
+// Adding a new widget package automatically includes it here; without the
+// optional /widgets dir the globs are empty and every lookup returns null.
 const widgetModules = import.meta.glob('../../widgets/*/Widget.vue')
 // Optional per-widget settings UI. A widget that sets "configurable": true in
 // its manifest should ship a Config.vue alongside its Widget.vue.
