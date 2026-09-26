@@ -1,7 +1,3 @@
-// Hub UI pseudo-widgets — the hub's own elements (account, theme changer, app
-// buttons), described like widgets so an installed dashboard provider (Pulse)
-// can move/resize them. Movable + resizable but not disableable. Owned by the
-// hub; without a provider they simply render at their defaults.
 export const HUB_MANIFESTS = [
   {
     id: 'hub-account',

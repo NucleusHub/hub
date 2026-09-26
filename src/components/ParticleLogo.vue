@@ -3,19 +3,14 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import * as THREE from 'three'
 
 const props = defineProps({
-  /** Rendered canvas size in CSS pixels (square). */
   size: { type: Number, default: 220 },
-  /** Dark theme uses the glowing additive palette; light uses the soft logo colors. */
   dark: { type: Boolean, default: true },
-  /** When true, the particles stay fully spread regardless of cursor proximity. */
   active: { type: Boolean, default: false },
 })
 
 const container = ref(null)
 let cleanup = () => {}
 
-// Two palettes. Dark glows additively on a dark bg; light uses the lighter
-// logo colors with normal blending so they stay visible on a light bg.
 const PALETTES = {
   dark: {
     core: new THREE.Color('#a855f7'),
@@ -25,7 +20,6 @@ const PALETTES = {
     glowOpacity: 0.55,
   },
   light: {
-    // Pink core → light blue outer, matching the light logo's gradient.
     core: new THREE.Color('#eaa3ef'),
     inner: new THREE.Color('#cf90ee'),
     outer: new THREE.Color('#8ec0fb'),
@@ -34,14 +28,12 @@ const PALETTES = {
   },
 }
 
-// Deterministic pseudo-random so the structure is stable across reloads.
 function rng(seed) {
   let s = seed % 2147483647
   if (s <= 0) s += 2147483646
   return () => (s = (s * 16807) % 2147483647) / 2147483647
 }
 
-// Particles spread over a full sphere surface (Fibonacci distribution).
 function spherePoints(count, radius, color, sizeJitter, rand) {
   const positions = new Float32Array(count * 3)
   const colors = new Float32Array(count * 3)
@@ -57,8 +49,6 @@ function spherePoints(count, radius, color, sizeJitter, rand) {
     positions[i * 3] = px * radius * jit
     positions[i * 3 + 1] = py * radius * jit
     positions[i * 3 + 2] = pz * radius * jit
-    // Surface "mottling" — bright patches tied to position so the core's
-    // rotation is actually visible (a uniform sphere looks static spinning).
     const patches = Math.sin(px * 7) * Math.sin(py * 6) * Math.sin(pz * 7)
     const b = 0.55 + Math.max(0, patches) * 0.7 + rand() * 0.2
     colors[i * 3] = Math.min(1, color.r * b)
@@ -68,7 +58,6 @@ function spherePoints(count, radius, color, sizeJitter, rand) {
   return { positions, colors }
 }
 
-// Thin curved band: a latitude slice of a sphere surface (full ring belt).
 function bandPoints(count, radius, latCenter, halfWidth, color, rand) {
   const positions = new Float32Array(count * 3)
   const colors = new Float32Array(count * 3)
@@ -76,7 +65,6 @@ function bandPoints(count, radius, latCenter, halfWidth, color, rand) {
   const cosMax = Math.cos(latCenter + halfWidth)
   for (let i = 0; i < count; i++) {
     const phi = rand() * Math.PI * 2
-    // Uniform area within the band.
     const cosT = cosMax + rand() * (cosMin - cosMax)
     const sinT = Math.sqrt(Math.max(0, 1 - cosT * cosT))
     const rr = radius * (1 + (rand() - 0.5) * 0.04)
@@ -124,13 +112,10 @@ function makePoints(data, sprite, size, blending) {
 function buildScene() {
   const pal = props.dark ? PALETTES.dark : PALETTES.light
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // Spread (cursor/active displacement) is disabled on mobile — the core just spins.
   const isMobile = window.innerWidth < 768
   const rand = rng(1337)
 
-  // Overscan: the canvas is drawn larger than the logo's layout footprint so
-  // particles can fly outward on hover without being clipped at the edges.
-  // Pulling the camera back by the same factor keeps the resting size identical.
+  // Overscan so spread particles aren't clipped; the camera pulls back to keep the resting size.
   const OVERSCAN = 1.8
   const canvasSize = props.size * OVERSCAN
 
@@ -142,7 +127,6 @@ function buildScene() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(canvasSize, canvasSize)
   const canvas = renderer.domElement
-  // Center the oversized canvas over the footprint; let it overflow freely.
   canvas.style.position = 'absolute'
   canvas.style.left = '50%'
   canvas.style.top = '50%'
@@ -155,7 +139,6 @@ function buildScene() {
 
   const disposables = [sprite]
 
-  // Particle sets whose points spread outward on cursor proximity.
   const displaceObjs = []
   function registerDisplace(points) {
     const attr = points.geometry.getAttribute('position')
@@ -166,16 +149,14 @@ function buildScene() {
     displaceObjs.push({ attr, base, fac, n })
   }
 
-  // --- Core sphere ----------------------------------------------------------
   const core = makePoints(spherePoints(2600, 0.46, pal.core, 0.06, rand), sprite, 0.05, pal.blending)
   const coreSpin = new THREE.Group()
   coreSpin.add(core)
-  coreSpin.rotation.z = 0.4 // tilt the spin axis so rotation reads clearly
+  coreSpin.rotation.z = 0.4
   root.add(coreSpin)
   disposables.push(core.geometry, core.material)
   registerDisplace(core)
 
-  // Soft central glow so the core reads as a solid, lit orb.
   const glowMat = new THREE.SpriteMaterial({
     map: sprite,
     color: pal.core,
@@ -189,7 +170,6 @@ function buildScene() {
   root.add(glow)
   disposables.push(glowMat)
 
-  // --- Orbiting shells (thin curved bands, independent tilted axes) ---------
   const SHELLS = [
     { radius: 0.64, lat: Math.PI * 0.5, hw: 0.16, count: 3200, mix: 0.15 },
     { radius: 0.78, lat: Math.PI * 0.42, hw: 0.13, count: 3400, mix: 0.4 },
@@ -206,26 +186,19 @@ function buildScene() {
     root.add(group)
     disposables.push(pts.geometry, pts.material)
     registerDisplace(pts)
-    // Deliberate, evenly-spread tilts so the shells form a balanced lattice
-    // instead of a random tangle.
     const tilt = (i / SHELLS.length) * Math.PI
     group.rotation.set(tilt * 0.6, tilt, tilt * 0.3)
-    // Each shell gets its own axis, but spread smoothly by index (not random)
-    // so they spin independently without looking chaotic. All same direction,
-    // gently varied speeds.
     const a = (i / SHELLS.length) * Math.PI * 0.8
     const axis = new THREE.Vector3(Math.sin(a) * 0.6, 1, Math.cos(a) * 0.6).normalize()
     const speed = 0.22 + i * 0.07
     return { group, axis, speed }
   })
 
-  // --- Cursor proximity ("alive" magnetism) ---------------------------------
-  const PROX_PX = 100 // distance from the logo at which it starts reacting
+  const PROX_PX = 100
   let targetExcite = 0
   const onPointer = e => {
     if (isMobile) return
     const r = container.value.getBoundingClientRect()
-    // Distance from the pointer to the nearest edge of the canvas (0 if inside).
     const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right)
     const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom)
     const dist = Math.hypot(dx, dy)
@@ -238,24 +211,18 @@ function buildScene() {
   let t = 0
   let excite = 0
   let displaced = false
-  let boost = 0          // extra spin speed, coasts down naturally
-  let wasClose = false   // rising-edge detector for "really close"
+  let boost = 0
+  let wasClose = false
   const animate = ts => {
     raf = requestAnimationFrame(animate)
     const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016
     last = ts
     t += dt
 
-    // Asymmetric timing: spreads out quickly as the cursor approaches, but
-    // reassembles slowly once it leaves (a lazy settle, not an instant snap).
-    // `active` holds the spread open (orbit hovered / Pulse editing).
     const target = isMobile ? 0 : Math.max(targetExcite, props.active ? 1 : 0)
     const rate = target > excite ? 0.2 : 0.02
     excite += (target - excite) * rate
 
-    // Hovering close → kick a spin surge the instant the cursor arrives
-    // (driven by raw proximity, not the slow gather), then let it coast down
-    // naturally (exponential decay) back to normal speed.
     const close = targetExcite > 0.5
     if (close && !wasClose) boost = 6
     wasClose = close
@@ -270,7 +237,6 @@ function buildScene() {
     }
 
     if (excite > 0.002) {
-      // Exponential onset: barely moves until the cursor is close, then surges.
       const e = Math.pow(excite, 4)
       for (const o of displaceObjs) {
         const { attr, base, fac, n } = o
@@ -288,7 +254,6 @@ function buildScene() {
       }
       displaced = true
     } else if (displaced) {
-      // Settle back to the resting shape exactly once.
       for (const o of displaceObjs) {
         o.attr.array.set(o.base)
         o.attr.needsUpdate = true
@@ -310,7 +275,6 @@ function buildScene() {
 }
 
 onMounted(buildScene)
-// Rebuild with the other palette when the theme flips.
 watch(() => props.dark, () => { cleanup(); buildScene() })
 
 onBeforeUnmount(() => cleanup())

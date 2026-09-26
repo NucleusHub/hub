@@ -11,8 +11,6 @@ const props = defineProps({
 })
 const emit = defineEmits(['spread'])
 
-// Orbit nodes are part of the optional widget dashboard: no enabled dashboard
-// provider (Pulse) → no system widgets at all, just the particle logo.
 const {
   enabled: dashboardEnabled,
   editor: { active: editing, isTempHidden },
@@ -21,32 +19,22 @@ const {
 } = useDashboardProvider()
 const { widgets: manifests, disabledWidgetIds } = useRegistry()
 
-// A node is pinned when its (per-user) dashboard state has locked = true.
 function lockedOf(id) {
   return dashStates.value.find((w) => w.id === id)?.locked === true
 }
 
 const wrap = ref(null)
 const open = ref(false)
-// System (orbit) widgets are hidden on mobile — too cramped to be useful.
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false)
-// Core centre in viewport coords — the teleported orbit layer anchors here.
 const cx = ref(0)
 const cy = ref(0)
 
-
-// ── Force-layout state (positions are offsets from the core centre) ──────────
-const REST = 250   // tether rest length (edge length to the core)
-const SEP = 220    // min centre-to-centre spacing before nodes repel
+const REST = 250
+const SEP = 220
 const TETHER = 0.05
 const REPEL = 0.55
-const DECAY = 0.76 // velocity decay per frame
+const DECAY = 0.76
 
-// Nodes are the installed widgets that declare `"slot": "nucleus"` and ship a
-// Widget.vue — nothing is hard-coded, so a setup without those widgets simply
-// has no orbit. Initial placement: evenly around the core (starting top-left,
-// clockwise) so the force layout starts at equilibrium; a manifest may pin its
-// start with `orbitAngle` (degrees, 0 = right, +clockwise).
 const nodes = reactive([])
 watch(
   manifests,
@@ -72,11 +60,9 @@ watch(
   { immediate: true }
 )
 
-// Only nodes the dashboard has left enabled (defaults to on). Hidden entirely on mobile.
 const activeNodes = computed(() => {
   if (isMobile.value || !dashboardEnabled.value) return []
   return nodes.filter((n) => {
-    // Globally disabled by an admin (incl. cascade from disabling System Info).
     if (disabledWidgetIds.value.has(n.id)) return false
     if (isTempHidden(n.id)) return false
     const st = dashStates.value.find((w) => w.id === n.id)
@@ -84,8 +70,6 @@ const activeNodes = computed(() => {
   })
 })
 
-// Restore saved positions once the (per-user) dashboard state loads — and for
-// nodes that appear after it did (the registry may resolve later).
 const restored = new Set()
 watch(
   [dashStates, () => nodes.length],
@@ -107,7 +91,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Persist a node's offset to its dashboard config (scoped to the logged-in user).
 function saveNode(n) {
   const st = getWidgetState(n.id)
   setWidgetState(n.id, {
@@ -116,18 +99,12 @@ function saveNode(n) {
   saveState()
 }
 
-// Deploy: 0 = collapsed into the core, 1 = flown out to node positions.
 const deploy = ref(0)
 const expanded = computed(() => open.value || editing.value)
-// "Spread" = opened by hover, with system widgets out, but NOT during dashboard
-// editing (where the dashboard must stay readable). Emitted to HomeView, which
-// renders the background blur (must live inside #app to share its backdrop
-// root) and lifts just the particle logo above it. Disabled on mobile.
 const spread = computed(() => open.value && !editing.value && !isMobile.value && dashboardEnabled.value)
 watch(spread, (v) => emit('spread', v), { immediate: true })
 const dragging = ref(null)
 
-// ── Proximity: open near the core, stay open near a node (not the app buttons) ─
 const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
 const WIDGET_RADIUS = 130
 function center() {
@@ -149,7 +126,6 @@ function onMove(e) {
   open.value = near
 }
 
-// ── Drag (from the toolbar's move handle) — node follows cursor, others repel ─
 function startDrag(node, e) {
   if (lockedOf(node.id)) return
   e.preventDefault()
@@ -168,48 +144,42 @@ function startDrag(node, e) {
     dragging.value = null
     window.removeEventListener('mousemove', move)
     window.removeEventListener('mouseup', up)
-    saveNode(node) // persist the new position for this user
+    saveNode(node)
   }
   window.addEventListener('mousemove', move)
   window.addEventListener('mouseup', up)
 }
 
-// ── Simulation loop ──────────────────────────────────────────────────────────
 let raf = 0
 function frame() {
   raf = requestAnimationFrame(frame)
 
-  // Track the core centre so the teleported layer stays anchored to the logo.
   if (wrap.value) {
     const r = wrap.value.getBoundingClientRect()
     cx.value = r.left + r.width / 2
     cy.value = r.top + r.height / 2
   }
 
-  // Ease the deploy factor; snap when essentially settled (keeps text crisp).
   const target = expanded.value ? 1 : 0
   deploy.value += (target - deploy.value) * 0.15
   if (Math.abs(target - deploy.value) < 0.002) deploy.value = target
 
   const list = activeNodes.value
   for (const n of list) {
-    // Dragged and locked (pinned) nodes hold position but still repel others.
     if (n === dragging.value || lockedOf(n.id)) continue
     let fx = 0
     let fy = 0
 
-    // Tether to the core: pull toward the rest radius along the edge.
     const dist = Math.hypot(n.x, n.y) || 0.001
     fx += TETHER * (REST - dist) * (n.x / dist)
     fy += TETHER * (REST - dist) * (n.y / dist)
 
-    // Repulsion: nodes that get too close push each other apart.
     for (const m of list) {
       if (m === n) continue
       let dx = n.x - m.x
       let dy = n.y - m.y
       let d = Math.hypot(dx, dy)
-      if (d < 0.001) { dx = 1; dy = 1; d = 1.414 } // de-overlap exact coincidence
+      if (d < 0.001) { dx = 1; dy = 1; d = 1.414 }
       if (d < SEP) {
         const f = (REPEL * (SEP - d)) / d
         fx += dx * f
@@ -239,7 +209,6 @@ onBeforeUnmount(() => {
 function widgetStyle(n) {
   const d = deploy.value
   return {
-    // Round to whole pixels so transformed card text stays crisp.
     transform: `translate(-50%, -50%) translate(${Math.round(n.x * d)}px, ${Math.round(n.y * d)}px) scale(${(0.3 + 0.7 * d).toFixed(3)})`,
     opacity: d,
     pointerEvents: d > 0.5 ? 'auto' : 'none',
@@ -260,8 +229,6 @@ function lineStyle(n) {
   <div ref="wrap" class="orbit" :class="{ 'orbit-lift': spread }">
     <ParticleLogo :size="size" :dark="dark" :active="expanded" />
 
-    <!-- Teleported to body so a high z-index escapes the logo's stacking
-         context and floats above the Pulse overlay. Anchored to the core. -->
     <Teleport to="body">
     <div class="orbit-center" :style="{ left: cx + 'px', top: cy + 'px' }">
       <div
@@ -284,7 +251,6 @@ function lineStyle(n) {
           <component :is="n.comp" v-if="n.comp" size="small" :dark="dark" />
         </div>
 
-        <!-- Dashboard editing: same toolbar as other widgets, with a move handle. -->
         <div v-if="editing && WidgetControls" class="orbit-tool">
           <component
             :is="WidgetControls"
@@ -304,8 +270,7 @@ function lineStyle(n) {
   display: inline-block;
   line-height: 0;
 }
-/* Lift only the particle logo above the backdrop blur while spread. Relies on
-   no ancestor (logo wrapper / #app / page root) creating a stacking context. */
+/* Relies on no ancestor creating a stacking context. */
 .orbit-lift {
   z-index: 70;
 }
@@ -313,11 +278,10 @@ function lineStyle(n) {
   position: fixed;
   width: 0;
   height: 0;
-  z-index: 100; /* above the Pulse overlay (50); below modals (200) */
+  z-index: 100;
   pointer-events: none;
   line-height: 0;
 }
-/* Positions are driven per-frame by the simulation — no CSS transitions. */
 .orbit-line {
   position: absolute;
   top: 0;
@@ -337,7 +301,6 @@ function lineStyle(n) {
 .orbit-widget.dragging {
   cursor: grabbing;
 }
-/* Subtle, independent ambient drift (timing set per-widget inline). */
 .orbit-float {
   animation-name: orbit-float;
   animation-timing-function: ease-in-out;
@@ -350,8 +313,7 @@ function lineStyle(n) {
   75%      { transform: translate(-5px, -2px); }
 }
 
-/* Pulse-mode toolbar: anchored under the node. line-height reset because the
-   .orbit wrapper sets it to 0 (for the canvas). */
+/* .orbit sets line-height: 0 for the canvas. */
 .orbit-tool {
   position: absolute;
   top: 100%;

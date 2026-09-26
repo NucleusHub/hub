@@ -21,16 +21,10 @@ import Squares2x2Icon from '@/assets/icons/squares-2x2.svg?component'
 
 const { profile, login } = useAuth()
 const showSwitch = ref(false)
-// True while the Nucleus core is spread by hover (emitted by NucleusOrbit) —
-// drives the background blur, which must live inside #app to blur the page.
 const orbitSpread = ref(false)
 const switchPreselect = ref(null)
 
 const { apps, widgets: manifests, loading } = useRegistry()
-// The widget dashboard is optional — owned by an installed dashboard provider
-// (Pulse). Without one, or with it disabled, the whole widget system (button,
-// overlay, dashboard + orbit widgets) is off and only the core hub UI (app
-// buttons, account, theme) remains. See useDashboardProvider.js.
 const {
   enabled: dashboardEnabled,
   editor: { active: editing, toggle: toggleEditing, tempHidden },
@@ -40,7 +34,6 @@ const {
   ConfigModal: WidgetConfigModal,
 } = useDashboardProvider()
 
-// All manifests passed to the provider: registry widgets + hub pseudo-widgets
 const allManifests = computed(() => [...manifests.value, ...HUB_MANIFESTS])
 
 watch([allManifests, dashboardLoading], ([ms, dl]) => {
@@ -49,8 +42,6 @@ watch([allManifests, dashboardLoading], ([ms, dl]) => {
 
 onMounted(() => { fetchState(); loadAccountProfiles() })
 
-// Persist a widget's self-managed config (e.g. the Echo widget remembering which
-// chat is open). Debounced so rapid changes coalesce into one save.
 let _widgetConfigTimer = null
 function onWidgetConfig(id, config) {
   setWidgetState(id, { config })
@@ -62,7 +53,6 @@ const dashboardApps = computed(() =>
   apps.value.filter(a => a.hub?.showOnDashboard !== false)
 )
 
-// Regular dashboard widgets (not hub system elements)
 const widgetData = computed(() => {
   const ms = manifests.value.filter(m => m.slot !== 'system' && m.slot !== 'system-hub' && m.slot !== 'nucleus')
   return ms.map(m => {
@@ -73,14 +63,10 @@ const widgetData = computed(() => {
   })
 })
 
-// Temp-hidden widgets vanish from the canvas while editing; the set is cleared
-// on close, so they reappear the moment edit mode ends. Without an enabled
-// dashboard provider, no dashboard widgets render at all.
 const enabledWidgets = computed(() =>
   !dashboardEnabled.value ? [] : widgetData.value.filter(w => w.enabled && !tempHidden.value.has(w.id))
 )
 
-// Hub UI states — with sensible viewport-relative defaults before DB loads
 function hubDefault(id) {
   const vw = typeof window !== 'undefined' ? window.innerWidth  : 1280
   const vh = typeof window !== 'undefined' ? window.innerHeight : 768
@@ -98,10 +84,9 @@ const effectiveAccountPos  = computed(() =>
   isMobile.value ? { x: 16, y: 8 } : hubAccount.value.position
 )
 
-// Profiles loaded for the large account widget
 const accountProfiles = ref([])
 async function loadAccountProfiles() {
-  // picker=1: account switcher widget — guests may see the list here.
+  // picker=1 lets guests see the profile list.
   const res = await fetch('/api/auth/profiles?picker=1', { credentials: 'include' })
   accountProfiles.value = res.ok ? await res.json() : []
 }
@@ -126,9 +111,7 @@ async function switchToProfile(p) {
   }
 }
 
-// Dimensions derived from hub widget sizes
 const THEME_DIMS = { small: { w: 114, h: 46 }, large: { w: null, h: 46 } }
-// small/medium = icon grid; large = horizontal card list (current default)
 const APPS_DIMS  = {
   small:  { iconSvg: 30 },
   medium: { iconSvg: 30 },
@@ -139,7 +122,6 @@ const vw           = ref(typeof window !== 'undefined' ? window.innerWidth : 128
 const isMobile     = computed(() => vw.value < 768)
 onMounted(() => { window.addEventListener('resize', () => { vw.value = window.innerWidth }) })
 
-// On mobile: theme changer is always small and always pinned top-right
 const effectiveThemeSize = computed(() => isMobile.value ? 'small' : (hubTheme.value.size ?? 'small'))
 const effectiveThemePos  = computed(() =>
   isMobile.value
@@ -149,24 +131,18 @@ const effectiveThemePos  = computed(() =>
 
 const themeDims    = computed(() => THEME_DIMS[effectiveThemeSize.value] ?? THEME_DIMS.small)
 const appsDims     = computed(() => APPS_DIMS[hubApps.value.size]   ?? APPS_DIMS.large)
-// Clamp card width to viewport with some breathing room
 const appsCardW    = computed(() => {
   const raw = hubManifest('hub-apps').sizeDims[hubApps.value.size] ?? 420
   return Math.min(raw, vw.value - 32)
 })
-// Grid layout computeds (used for small/medium — individual glass card per app)
-// itemW ≈ appsCardW/4 - 10 (slightly smaller than flex slot so cards breathe)
 const gridItemW    = computed(() => Math.floor(appsCardW.value / 4) - 10)
-// LiquidGlass padding so icon fills card: (cardSize - iconSvg) / 2
 const gridIconPad  = computed(() => Math.max(8, Math.floor((gridItemW.value - 30) / 2)) + 'px')
-// medium adds label below the card: card + 4px gap + ~13px text + 3px = 20px
 const gridItemH    = computed(() => hubApps.value.size === 'medium' ? gridItemW.value + 20 : gridItemW.value)
 const gridRows     = computed(() => Math.ceil(Math.max(1, dashboardApps.value.length) / 4))
 const gridHeight   = computed(() =>
   gridRows.value * gridItemH.value + Math.max(0, gridRows.value - 1) * 8
 )
 
-// LiquidGlass card refs for mouse-tracking
 let cardRefs = []
 const hovered = reactive({})
 
@@ -184,10 +160,6 @@ const THEMES = [
 const { theme, isDark, setTheme } = useTheme()
 const { t } = useI18n()
 
-// A quiet, time-aware welcome above the tagline — personalized with the current
-// profile once it loads. Localized via the shared core.greeting.* keys, so it
-// reads the same in every language. Computed once per visit (the page reloads on
-// navigation, so no live clock is needed).
 const greetingSlot = (() => {
   const h = new Date().getHours()
   if (h < 5) return 'night'
@@ -222,24 +194,15 @@ function setHubAppsSize(size) {
 
     <BackgroundBlobs />
 
-    <!-- Dashboard edit dim — sits at z-[5], below every widget (app buttons z-10,
-         canvas z-30) but above the background + logo, so the widgets you're
-         editing stay bright while the page behind them is dimmed. -->
     <div
       v-if="editing && dashboardEnabled"
       class="fixed inset-0 z-[5] bg-black/20 dark:bg-black/35 pointer-events-none transition-opacity"
     />
 
-    <!-- Backdrop blur behind the spread Nucleus core. Lives inside #app (not
-         teleported) so it shares the page's backdrop root and actually blurs
-         the content. z-60: above the page (canvas 30, pulse 50), below the
-         lifted particle logo (70) and the orbit nodes (100). -->
     <div class="dash-blur" :class="{ on: orbitSpread }" />
 
-    <!-- Fixed widget canvas — all freely-positioned elements live here -->
     <div class="fixed inset-0 z-30 pointer-events-none">
 
-      <!-- Regular dashboard widgets — hidden on mobile -->
       <template v-if="!isMobile">
         <div
           v-for="w in enabledWidgets"
@@ -257,7 +220,6 @@ function setHubAppsSize(size) {
         </div>
       </template>
 
-      <!-- ── Account Widget ── -->
       <div v-if="profile && !tempHidden.has('hub-account')"
         data-widget-id="hub-account"
         class="pointer-events-auto"
@@ -267,7 +229,6 @@ function setHubAppsSize(size) {
           top:  effectiveAccountPos.y + 'px',
           width: effectiveAccountSize === 'large' ? '220px' : '40px',
         }">
-        <!-- Small: avatar circle -->
         <button v-if="effectiveAccountSize === 'small'"
           @click="showSwitch = true"
           class="w-10 h-10 rounded-full opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
@@ -275,9 +236,7 @@ function setHubAppsSize(size) {
           <AvatarCircle :profile="profile" :size="40" />
         </button>
 
-        <!-- Large: name + recents + manage -->
         <div v-else class="rounded-[14px] bg-white/20 dark:bg-white/[0.08] backdrop-blur-md border border-slate-300/80 dark:border-white/[0.15] overflow-hidden">
-          <!-- Current profile -->
           <button @click="showSwitch = true"
             class="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
             <AvatarCircle :profile="profile" :size="32" />
@@ -285,7 +244,6 @@ function setHubAppsSize(size) {
             <Icon name="chevronRight" class="w-3.5 h-3.5 text-slate-400 dark:text-white/40 shrink-0" :sw="2.5" />
           </button>
 
-          <!-- Recent profiles -->
           <template v-if="recentProfiles.length">
             <div class="h-px bg-white/25 dark:bg-white/10 mx-3" />
             <button v-for="p in recentProfiles" :key="p._id"
@@ -298,7 +256,6 @@ function setHubAppsSize(size) {
           </template>
 
           <div class="h-px bg-white/25 dark:bg-white/10 mx-3" />
-          <!-- Manage profiles -->
           <button @click="showSwitch = true"
             class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/15 dark:hover:bg-white/[0.06] transition-colors cursor-pointer text-slate-500 dark:text-white/50 hover:text-slate-800 dark:hover:text-white">
             <UserGroupIcon class="w-3.5 h-3.5 shrink-0" />
@@ -307,7 +264,6 @@ function setHubAppsSize(size) {
         </div>
       </div>
 
-      <!-- ── Theme Changer ── -->
       <div
         v-if="!tempHidden.has('hub-theme')"
         data-widget-id="hub-theme"
@@ -323,7 +279,6 @@ function setHubAppsSize(size) {
         <div class="w-full h-full rounded-[14px] flex items-center px-[5px] gap-0.5
                     bg-white/20 dark:bg-white/[0.08] backdrop-blur-md
                     border border-slate-300/80 dark:border-white/[0.15]">
-          <!-- Small: icons only -->
           <template v-if="effectiveThemeSize === 'small'">
             <button
               v-for="themeOpt in THEMES"
@@ -340,7 +295,6 @@ function setHubAppsSize(size) {
               </svg>
             </button>
           </template>
-          <!-- Large: icons + labels -->
           <template v-else>
             <button
               v-for="themeOpt in THEMES"
@@ -361,13 +315,11 @@ function setHubAppsSize(size) {
         </div>
       </div>
 
-    </div><!-- /widget canvas -->
+    </div>
 
     <ProfileSelector v-if="showSwitch" :closeable="true" :preselected-id="switchPreselect"
       @close="showSwitch = false; switchPreselect = null" />
 
-    <!-- Dashboard edit toggle — always fixed, outside the movable canvas.
-         Hidden without an enabled dashboard provider. -->
     <button
       v-if="dashboardEnabled"
       class="fixed bottom-4 right-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200"
@@ -380,9 +332,7 @@ function setHubAppsSize(size) {
       <Squares2x2Icon width="17" height="17" />
     </button>
 
-    <!-- Logo + title — centered in page flow. No z-index here (no stacking
-         context) so the particle logo can lift itself above the orbit blur
-         while the title stays behind it. -->
+    <!-- No z-index: the particle logo must be able to lift above the orbit blur. -->
     <div class="relative flex flex-col items-center gap-4 text-center">
       <NucleusOrbit :size="logoSize" :dark="isDark" @spread="orbitSpread = $event" />
       <h1 class="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">{{ APP_NAME }}</h1>
@@ -390,11 +340,7 @@ function setHubAppsSize(size) {
       <p v-if="greeting" class="hub-greeting nuc-in-fade text-sm font-semibold">{{ greeting }}</p>
     </div>
 
-    <!-- App Buttons — page flow, resize-only in Pulse mode. z-10 keeps it above
-         the pulse dim (z-[5]) so it isn't dimmed while editing. Opacity-only
-         fade-in (no transform) so the per-card hover lifts stay intact. -->
     <div class="relative z-10 mt-6 nuc-in-fade" :style="{ width: appsCardW + 'px' }">
-      <!-- Pulse size toolbar — absolute so it doesn't shift the cards -->
       <Transition name="dash-fade">
         <div v-if="editing && !isMobile" class="absolute inset-x-0 flex justify-center" style="top: -42px;">
           <div class="hub-ctrl-bar" :class="{ 'theme-light': !isDark }">
@@ -411,7 +357,6 @@ function setHubAppsSize(size) {
         </div>
       </Transition>
 
-      <!-- Loading skeleton -->
       <template v-if="loading">
         <div
           v-if="hubApps.size !== 'large'"
@@ -427,7 +372,6 @@ function setHubAppsSize(size) {
         </template>
       </template>
 
-      <!-- SMALL / MEDIUM — per-item glass cards in a flex grid -->
       <template v-else-if="hubApps.size !== 'large'">
         <div
           class="flex flex-wrap justify-center"
@@ -476,7 +420,6 @@ function setHubAppsSize(size) {
         </div>
       </template>
 
-      <!-- LARGE — horizontal card list (one LiquidGlass per app) -->
       <div v-else class="flex flex-col gap-3">
         <a
           v-for="(item, i) in dashboardApps"
@@ -537,21 +480,17 @@ function setHubAppsSize(size) {
       </div>
     </div>
 
-    <!-- Dashboard edit overlay (provided by the dashboard provider) -->
     <Teleport v-if="DashboardOverlay" to="body">
       <Transition name="dash-fade">
         <DashboardOverlay v-if="editing && dashboardEnabled" :manifests="allManifests" />
       </Transition>
     </Teleport>
 
-    <!-- Widget settings modal (opened from a widget's edit-mode gear button) -->
     <component :is="WidgetConfigModal" v-if="WidgetConfigModal" />
   </div>
 </template>
 
 <style scoped>
-/* Time-of-day greeting — a soft indigo→violet gradient wordmark that gently
-   drifts, so it feels alive without pulling focus from the logo. */
 .hub-greeting {
   margin-top: -4px;
   background: linear-gradient(100deg, #6366f1, #a78bfa 45%, #818cf8 70%, #6366f1);
@@ -640,7 +579,6 @@ function setHubAppsSize(size) {
   color: #fff;
 }
 
-/* Light mode (theme-light class set from useTheme / !isDark) */
 .hub-ctrl-bar.theme-light {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(15, 23, 42, 0.12);
